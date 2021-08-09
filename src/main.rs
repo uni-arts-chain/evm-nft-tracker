@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     );
     let client = EvmClient::new("Ethereum", web3);
 
-    erc721::track_erc721_events(&client, 12967550, 2, Box::new(DefaultErc721Callback {})).await;
+    erc721::track_erc721_events(&client, 12989117, 5, Box::new(DefaultErc721Callback {})).await;
 
     // let from = 12967549;
     // let   to = 12968550;

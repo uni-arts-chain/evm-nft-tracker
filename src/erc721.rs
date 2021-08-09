@@ -23,36 +23,52 @@ pub async fn track_erc721_events(client: &EvmClient, start_from: u64, step: u64,
     let mut step = step;
     let mut from = start_from;
     loop {
-        let to = from + step - 1;
-        // let latest_block_number = client.get_latest_block_number().await
-        debug!("Scan for {} ERC721 events in block range of {} - {}({} included)", client.chain_name, from, to, step);
-        let start = Instant::now();
-        match get_events(&client, from, to).await {
-            Ok(events) => {
-                debug!("{} {} ERC721 events were scanned", client.chain_name, events.len());
-                for event in events {
-                    callback.on_erc721_event(event);
+        match client.get_latest_block_number().await {
+            Ok(latest_block_number) => {
+
+                let to = std::cmp::min(from + step - 1, latest_block_number - 6);
+
+                if to >= from {
+                    debug!("Scan for {} ERC721 events in block range of {} - {}({})", client.chain_name, from, to, to - from + 1);
+                    let start = Instant::now();
+                    match get_events(&client, from, to).await {
+                        Ok(events) => {
+                            debug!("{} {} ERC721 events were scanned", client.chain_name, events.len());
+                            for event in events {
+                                callback.on_erc721_event(event);
+                            }
+
+                            from = to + 1;
+
+                            let duration = start.elapsed();
+                            debug!("Time elapsed is: {:?}", duration);
+
+                            sleep(Duration::from_secs(5)).await;
+                        },
+                        Err(err) => {
+                            match err {
+                                Error::Web3Error(web3::Error::Rpc(e)) => {
+                                    if e.message == "query returned more than 10000 results" {
+                                        step = std::cmp::max(step / 2, 1);
+                                    }
+                                },
+                                _ => {
+                                    debug!("Encountered an error when get ERC721 events from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
+                                    sleep(Duration::from_secs(30)).await;
+                                }
+                            }
+                        },
+                    }
+                } else {
+                    debug!("Track {} ERC721 events too fast, wait for 30 seconds.", client.chain_name);
+                    sleep(Duration::from_secs(30)).await;
                 }
 
-                from = from + step;
-
-                let duration = start.elapsed();
-                debug!("Time elapsed is: {:?}", duration);
-
-                sleep(Duration::from_secs(5)).await;
             },
             Err(err) => {
-                match err {
-                    Error::Web3Error(web3::Error::Rpc(e)) => {
-                        if e.message == "query returned more than 10000 results" {
-                            step = std::cmp::max(step / 2, 1);
-                        }
-                    },
-                    _ => {
-                        println!("{:?}", err);
-                    }
-                }
-            },
+                println!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", err);
+                sleep(Duration::from_secs(30)).await;
+            }
         }
     }
 }
