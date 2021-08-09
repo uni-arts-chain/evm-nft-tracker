@@ -17,7 +17,7 @@ pub struct Erc1155Event {
     pub amount: U256,
 }
 
-pub trait Erc1155EventCallback {
+pub trait Erc1155EventCallback: Send {
     fn on_erc1155_event(&self, event: Erc1155Event);
 }
 

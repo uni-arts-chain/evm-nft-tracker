@@ -7,6 +7,7 @@ use web3::{
 };
 use array_bytes::hex2array;
 
+#[derive(Clone)]
 pub struct EvmClient {
     pub chain_name: &'static str,
     web3: Web3<Http>,

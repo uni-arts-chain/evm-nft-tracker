@@ -53,15 +53,25 @@ async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
 
-    // Ethereum
-    let web3 = Web3::new(
-        // Http::new("http://pangolin-rpc.darwinia.network").unwrap(),
-        Http::new("https://mainnet.infura.io/v3/60703fcc6b4e48079cfc5e385ee7af80").unwrap(),
-    );
-    let client = EvmClient::new("Ethereum", web3);
-
+    // // Ethereum
+    // let web3 = Web3::new(
+    //     Http::new("https://mainnet.infura.io/v3/60703fcc6b4e48079cfc5e385ee7af80").unwrap(),
+    // );
+    // let client = EvmClient::new("Ethereum", web3);
     // erc721::track_erc721_events(&client, 12989117, 5, Box::new(DefaultErc721Callback {})).await;
-    erc1155::track_erc1155_events(&client, 12989117, 5, Box::new(DefaultErc1155EventCallback {})).await;
+    // erc1155::track_erc1155_events(&client, 12989117, 5, Box::new(DefaultErc1155EventCallback {})).await;
+
+    // Pangolin 
+    let web3 = Web3::new(
+        Http::new("http://pangolin-rpc.darwinia.network").unwrap(),
+    );
+    let client = EvmClient::new("Pangolin", web3);
+    let client_clone = client.clone();
+    tokio::spawn(async move {
+        erc721::track_erc721_events(&client_clone, 185852, 5, Box::new(DefaultErc721EventCallback {})).await;
+    });
+    erc1155::track_erc1155_events(&client, 185852, 5, Box::new(DefaultErc1155EventCallback {})).await;
+
 
     // let from = 12967549;
     // let   to = 12968550;

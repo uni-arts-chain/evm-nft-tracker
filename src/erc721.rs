@@ -15,7 +15,7 @@ pub struct Erc721Event {
     pub token_id: U256,
 }
 
-pub trait Erc721EventCallback {
+pub trait Erc721EventCallback: Send {
     fn on_erc721_event(&self, event: Erc721Event);
 }
 
