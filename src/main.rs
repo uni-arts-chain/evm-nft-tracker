@@ -15,16 +15,29 @@ pub use evm_client::EvmClient;
 pub use crate::erc721::{
     Erc721Event, Erc721EventCallback
 };
+pub use crate::erc1155::{
+    Erc1155Event, Erc1155EventCallback
+};
 
 #[macro_use]
 extern crate log;
 
-struct DefaultErc721Callback {
+struct DefaultErc721EventCallback {
 
 }
 
-impl Erc721EventCallback for DefaultErc721Callback {
+impl Erc721EventCallback for DefaultErc721EventCallback {
     fn on_erc721_event(&self, event: Erc721Event) {
+        println!("{:?}", event);
+    }
+}
+
+struct DefaultErc1155EventCallback {
+
+}
+
+impl Erc1155EventCallback for DefaultErc1155EventCallback {
+    fn on_erc1155_event(&self, event: Erc1155Event) {
         println!("{:?}", event);
     }
 }
@@ -40,13 +53,15 @@ async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
 
+    // Ethereum
     let web3 = Web3::new(
         // Http::new("http://pangolin-rpc.darwinia.network").unwrap(),
         Http::new("https://mainnet.infura.io/v3/60703fcc6b4e48079cfc5e385ee7af80").unwrap(),
     );
     let client = EvmClient::new("Ethereum", web3);
 
-    erc721::track_erc721_events(&client, 12989117, 5, Box::new(DefaultErc721Callback {})).await;
+    // erc721::track_erc721_events(&client, 12989117, 5, Box::new(DefaultErc721Callback {})).await;
+    erc1155::track_erc1155_events(&client, 12989117, 5, Box::new(DefaultErc1155EventCallback {})).await;
 
     // let from = 12967549;
     // let   to = 12968550;

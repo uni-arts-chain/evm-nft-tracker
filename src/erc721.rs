@@ -66,7 +66,7 @@ pub async fn track_erc721_events(client: &EvmClient, start_from: u64, step: u64,
 
             },
             Err(err) => {
-                println!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", err);
+                println!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
                 sleep(Duration::from_secs(30)).await;
             }
         }

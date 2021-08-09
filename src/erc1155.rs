@@ -1,8 +1,10 @@
 use crate::{
-    Result, EvmClient
+    Result, Error, EvmClient
 };
 use web3::types::{H256, H160, Log, U256, Bytes};
 use array_bytes::hex2bytes_unchecked as bytes;
+use std::time::Duration;
+use tokio::time::sleep;
 
 #[derive(Debug)]
 pub struct Erc1155Event {
@@ -13,6 +15,60 @@ pub struct Erc1155Event {
     pub to: H160,
     pub token_id: U256,
     pub amount: U256,
+}
+
+pub trait Erc1155EventCallback {
+    fn on_erc1155_event(&self, event: Erc1155Event);
+}
+
+pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64, callback: Box<dyn Erc1155EventCallback>) {
+    let mut step = step;
+    let mut from = start_from;
+    loop {
+        match client.get_latest_block_number().await {
+            Ok(latest_block_number) => {
+
+                let to = std::cmp::min(from + step - 1, latest_block_number - 6);
+
+                if to >= from {
+                    debug!("Scan for {} ERC1155 events in block range of {} - {}({})", client.chain_name, from, to, to - from + 1);
+                    match get_events(&client, from, to).await {
+                        Ok(events) => {
+                            debug!("{} {} ERC1155 events were scanned", client.chain_name, events.len());
+                            for event in events {
+                                callback.on_erc1155_event(event);
+                            }
+
+                            from = to + 1;
+
+                            sleep(Duration::from_secs(5)).await;
+                        },
+                        Err(err) => {
+                            match err {
+                                Error::Web3Error(web3::Error::Rpc(e)) => {
+                                    if e.message == "query returned more than 10000 results" {
+                                        step = std::cmp::max(step / 2, 1);
+                                    }
+                                },
+                                _ => {
+                                    debug!("Encountered an error when get ERC1155 events from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
+                                    sleep(Duration::from_secs(30)).await;
+                                }
+                            }
+                        },
+                    }
+                } else {
+                    debug!("Track {} ERC1155 events too fast, wait for 30 seconds.", client.chain_name);
+                    sleep(Duration::from_secs(30)).await;
+                }
+
+            },
+            Err(err) => {
+                println!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
+                sleep(Duration::from_secs(30)).await;
+            }
+        }
+    }
 }
 
 pub async fn get_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Erc1155Event>> {
