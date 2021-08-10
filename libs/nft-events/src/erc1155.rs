@@ -34,7 +34,7 @@ pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64
                     debug!("Scan for {} ERC1155 events in block range of {} - {}({})", client.chain_name, from, to, to - from + 1);
                     match get_erc1155_events(&client, from, to).await {
                         Ok(events) => {
-                            debug!("{} {} ERC1155 events were scanned", client.chain_name, events.len());
+                            info!("{} {} ERC1155 events were scanned in block range of {} - {}({})", events.len(), client.chain_name, from, to, to - from + 1);
                             for event in events {
                                 callback.on_erc1155_event(event);
                             }
@@ -47,11 +47,15 @@ pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64
                             match err {
                                 Error::Web3Error(web3::Error::Rpc(e)) => {
                                     if e.message == "query returned more than 10000 results" {
+                                        error!("{}", e.message);
                                         step = std::cmp::max(step / 2, 1);
+                                    } else {
+                                        error!("Encountered an error when get ERC1155 events from {}: {:?}, wait for 30 seconds.", client.chain_name, e);
+                                        sleep(Duration::from_secs(30)).await;
                                     }
                                 },
                                 _ => {
-                                    debug!("Encountered an error when get ERC1155 events from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
+                                    error!("Encountered an error when get ERC1155 events from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
                                     sleep(Duration::from_secs(30)).await;
                                 }
                             }
@@ -64,7 +68,7 @@ pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64
 
             },
             Err(err) => {
-                println!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
+                error!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", client.chain_name, err);
                 sleep(Duration::from_secs(30)).await;
             }
         }

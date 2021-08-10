@@ -40,7 +40,7 @@ struct EthereumNftTrackerConfig {
 impl Default for EthereumNftTrackerConfig {
     fn default() -> Self {
         EthereumNftTrackerConfig {
-            rpc: "http://pangolin-rpc.darwinia.network".to_owned(),
+            rpc: "https://main-light.eth.linkpool.io".to_owned(),
             step: 6,
         }
     }

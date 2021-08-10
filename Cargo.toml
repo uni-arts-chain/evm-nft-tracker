@@ -1,7 +1,6 @@
 [workspace]
 
 members = [
-    "nft-events",
-    "ethereum-nft-tracker",
-    "pangolin-nft-tracker",
+    "libs/nft-events",
+    "livenets/*",
 ]

@@ -799,6 +799,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "moonriver-nft-tracker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "array-bytes",
+ "confy",
+ "env_logger",
+ "log",
+ "nft-events",
+ "serde",
+ "thiserror",
+ "tokio",
+ "web3",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -891,22 +907,6 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
-]
-
-[[package]]
-name = "pangolin-nft-tracker"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "array-bytes",
- "confy",
- "env_logger",
- "log",
- "nft-events",
- "serde",
- "thiserror",
- "tokio",
- "web3",
 ]
 
 [[package]]
