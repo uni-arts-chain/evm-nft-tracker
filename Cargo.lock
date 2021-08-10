@@ -1014,6 +1014,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
+name = "polygon-nft-tracker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "array-bytes",
+ "confy",
+ "env_logger",
+ "log",
+ "nft-events",
+ "serde",
+ "thiserror",
+ "tokio",
+ "web3",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
