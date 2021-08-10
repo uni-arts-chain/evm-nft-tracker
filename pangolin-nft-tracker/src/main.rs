@@ -9,21 +9,21 @@ use nft_events::{
 };
 use std::env;
 
-struct EthereumErc721EventCallback {
+struct PangolinErc721EventCallback {
 
 }
 
-impl Erc721EventCallback for EthereumErc721EventCallback {
+impl Erc721EventCallback for PangolinErc721EventCallback {
     fn on_erc721_event(&self, event: Erc721Event) {
         println!("{:?}", event);
     }
 }
 
-struct EthereumErc1155EventCallback {
+struct PangolinErc1155EventCallback {
 
 }
 
-impl Erc1155EventCallback for EthereumErc1155EventCallback {
+impl Erc1155EventCallback for PangolinErc1155EventCallback {
     fn on_erc1155_event(&self, event: Erc1155Event) {
         println!("{:?}", event);
     }
@@ -32,15 +32,15 @@ impl Erc1155EventCallback for EthereumErc1155EventCallback {
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct EthereumNftTrackerConfig {
+struct PangolinNftTrackerConfig {
     rpc: String,
     step: u64,
 }
 
-impl Default for EthereumNftTrackerConfig {
+impl Default for PangolinNftTrackerConfig {
     fn default() -> Self {
-        EthereumNftTrackerConfig {
-            rpc: "http://pangolin-rpc.darwinia.network".to_owned(),
+        PangolinNftTrackerConfig {
+            rpc: "https://main-light.eth.linkpool.io".to_owned(),
             step: 6,
         }
     }
@@ -59,30 +59,30 @@ async fn main() -> anyhow::Result<()> {
 
     // |Platform | Value                                                                                 |
     // | ------- | ------------------------------------------------------------------------------------- |
-    // | Linux   | `$XDG_CONFIG_HOME`/rs.ethereum-nft-tracker or `$HOME`/.config/rs.ethereum-nft-tracker |
-    // | macOS   | `$HOME`/Library/Preferences/rs.ethereum-nft-tracker                                   |
-    // | Windows | `{FOLDERID_RoamingAppData}`\\rs.ethereum-nft-tracker\\config                          |
-    let cfg: EthereumNftTrackerConfig = confy::load("ethereum-nft-tracker")?;
-    let ethereum_rpc = &cfg.rpc;
+    // | Linux   | `$XDG_CONFIG_HOME`/rs.pangolin-nft-tracker or `$HOME`/.config/rs.pangolin-nft-tracker |
+    // | macOS   | `$HOME`/Library/Preferences/rs.pangolin-nft-tracker                                   |
+    // | Windows | `{FOLDERID_RoamingAppData}`\\rs.pangolin-nft-tracker\\config                          |
+    let cfg: PangolinNftTrackerConfig = confy::load("pangolin-nft-tracker")?;
+    let rpc = &cfg.rpc;
     let step = cfg.step;
 
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
+        println!("Usage: pangolin-nft-tracker <PANGOLIN_BLOCK_NUMBER>")
     } else {
         if let Ok(start_from) = args[1].parse::<u64>() {
             let web3 = Web3::new(
-                Http::new(ethereum_rpc).unwrap(),
+                Http::new(rpc).unwrap(),
             );
-            let client = EvmClient::new("Ethereum", web3);
+            let client = EvmClient::new("Pangolin", web3);
             let client_clone = client.clone();
 
             tokio::spawn(async move {
-                erc721::track_erc721_events(&client_clone, start_from, step, Box::new(EthereumErc721EventCallback {})).await;
+                erc721::track_erc721_events(&client_clone, start_from, step, Box::new(PangolinErc721EventCallback {})).await;
             });
-            erc1155::track_erc1155_events(&client, start_from, step, Box::new(EthereumErc1155EventCallback {})).await;
+            erc1155::track_erc1155_events(&client, start_from, step, Box::new(PangolinErc1155EventCallback {})).await;
         } else {
-            println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
+            println!("Usage: pangolin-nft-tracker <PANGOLIN_BLOCK_NUMBER>")
         }
     }
 

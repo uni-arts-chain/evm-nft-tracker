@@ -894,6 +894,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pangolin-nft-tracker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "array-bytes",
+ "confy",
+ "env_logger",
+ "log",
+ "nft-events",
+ "serde",
+ "thiserror",
+ "tokio",
+ "web3",
+]
+
+[[package]]
 name = "parity-scale-codec"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
