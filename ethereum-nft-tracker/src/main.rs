@@ -29,6 +29,24 @@ impl Erc1155EventCallback for EthereumErc1155EventCallback {
     }
 }
 
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct EthereumNftTrackerConfig {
+    rpc: String,
+    step: u64,
+}
+
+impl Default for EthereumNftTrackerConfig {
+    fn default() -> Self {
+        EthereumNftTrackerConfig {
+            rpc: "https://main-light.eth.linkpool.io".to_owned(),
+            step: 6,
+        }
+    }
+}
+
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     std::env::set_var(
@@ -39,16 +57,25 @@ async fn main() -> anyhow::Result<()> {
     );
     env_logger::init();
 
+    /// |Platform | Value                                                                                 |
+    /// | ------- | ------------------------------------------------------------------------------------- |
+    /// | Linux   | `$XDG_CONFIG_HOME`/rs.ethereum-nft-tracker or `$HOME`/.config/rs.ethereum-nft-tracker |
+    /// | macOS   | `$HOME`/Library/Preferences/rs.ethereum-nft-tracker                                   |
+    /// | Windows | `{FOLDERID_RoamingAppData}`\\rs.ethereum-nft-tracker\\config                          |
+    let cfg: EthereumNftTrackerConfig = confy::load("ethereum-nft-tracker")?;
+    let ethereum_rpc = &cfg.rpc;
+    let step = cfg.step;
+
     let web3 = Web3::new(
-        Http::new("https://mainnet.infura.io/v3/60703fcc6b4e48079cfc5e385ee7af80").unwrap(),
+        Http::new(ethereum_rpc).unwrap(),
     );
     let client = EvmClient::new("Ethereum", web3);
     let client_clone = client.clone();
 
     tokio::spawn(async move {
-        erc721::track_erc721_events(&client_clone, 12989117, 5, Box::new(EthereumErc721EventCallback {})).await;
+        erc721::track_erc721_events(&client_clone, 12989117, step, Box::new(EthereumErc721EventCallback {})).await;
     });
-    erc1155::track_erc1155_events(&client, 12989117, 5, Box::new(EthereumErc1155EventCallback {})).await;
+    erc1155::track_erc1155_events(&client, 12989117, step, Box::new(EthereumErc1155EventCallback {})).await;
 
     Ok(())
 }

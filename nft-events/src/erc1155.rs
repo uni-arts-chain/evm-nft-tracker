@@ -32,7 +32,7 @@ pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64
 
                 if to >= from {
                     debug!("Scan for {} ERC1155 events in block range of {} - {}({})", client.chain_name, from, to, to - from + 1);
-                    match get_events(&client, from, to).await {
+                    match get_erc1155_events(&client, from, to).await {
                         Ok(events) => {
                             debug!("{} {} ERC1155 events were scanned", client.chain_name, events.len());
                             for event in events {
@@ -71,7 +71,7 @@ pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64
     }
 }
 
-pub async fn get_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Erc1155Event>> {
+pub async fn get_erc1155_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Erc1155Event>> {
     let transfer_single_topic = H256::from_slice(&bytes("0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62"));
     let transfer_batch_topic = H256::from_slice(&bytes("0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb"));
     let topics = vec![

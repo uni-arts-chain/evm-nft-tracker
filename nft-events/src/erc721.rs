@@ -31,7 +31,7 @@ pub async fn track_erc721_events(client: &EvmClient, start_from: u64, step: u64,
                 if to >= from {
                     debug!("Scan for {} ERC721 events in block range of {} - {}({})", client.chain_name, from, to, to - from + 1);
                     let start = Instant::now();
-                    match get_events(&client, from, to).await {
+                    match get_erc721_events(&client, from, to).await {
                         Ok(events) => {
                             debug!("{} {} ERC721 events were scanned", client.chain_name, events.len());
                             for event in events {
@@ -73,7 +73,7 @@ pub async fn track_erc721_events(client: &EvmClient, start_from: u64, step: u64,
     }
 }
 
-pub async fn get_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Erc721Event>> {
+pub async fn get_erc721_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Erc721Event>> {
     let transfer_topic = H256::from_slice(&bytes("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
     let logs = client.get_logs(None, vec![transfer_topic], from, to).await?;
     let mut events = vec![];
