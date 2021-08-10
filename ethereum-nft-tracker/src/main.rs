@@ -2,12 +2,12 @@ use web3::{
     Web3,
     transports::Http,
 };
-
 use nft_events::{
     EvmClient,
     erc721, Erc721Event, Erc721EventCallback,
     erc1155, Erc1155Event, Erc1155EventCallback,
 };
+use std::env;
 
 struct EthereumErc721EventCallback {
 
@@ -57,25 +57,34 @@ async fn main() -> anyhow::Result<()> {
     );
     env_logger::init();
 
-    /// |Platform | Value                                                                                 |
-    /// | ------- | ------------------------------------------------------------------------------------- |
-    /// | Linux   | `$XDG_CONFIG_HOME`/rs.ethereum-nft-tracker or `$HOME`/.config/rs.ethereum-nft-tracker |
-    /// | macOS   | `$HOME`/Library/Preferences/rs.ethereum-nft-tracker                                   |
-    /// | Windows | `{FOLDERID_RoamingAppData}`\\rs.ethereum-nft-tracker\\config                          |
+    // |Platform | Value                                                                                 |
+    // | ------- | ------------------------------------------------------------------------------------- |
+    // | Linux   | `$XDG_CONFIG_HOME`/rs.ethereum-nft-tracker or `$HOME`/.config/rs.ethereum-nft-tracker |
+    // | macOS   | `$HOME`/Library/Preferences/rs.ethereum-nft-tracker                                   |
+    // | Windows | `{FOLDERID_RoamingAppData}`\\rs.ethereum-nft-tracker\\config                          |
     let cfg: EthereumNftTrackerConfig = confy::load("ethereum-nft-tracker")?;
     let ethereum_rpc = &cfg.rpc;
     let step = cfg.step;
 
-    let web3 = Web3::new(
-        Http::new(ethereum_rpc).unwrap(),
-    );
-    let client = EvmClient::new("Ethereum", web3);
-    let client_clone = client.clone();
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
+    } else {
+        if let Ok(start_from) = args[1].parse::<u64>() {
+            let web3 = Web3::new(
+                Http::new(ethereum_rpc).unwrap(),
+            );
+            let client = EvmClient::new("Ethereum", web3);
+            let client_clone = client.clone();
 
-    tokio::spawn(async move {
-        erc721::track_erc721_events(&client_clone, 12989117, step, Box::new(EthereumErc721EventCallback {})).await;
-    });
-    erc1155::track_erc1155_events(&client, 12989117, step, Box::new(EthereumErc1155EventCallback {})).await;
+            tokio::spawn(async move {
+                erc721::track_erc721_events(&client_clone, start_from, step, Box::new(EthereumErc721EventCallback {})).await;
+            });
+            erc1155::track_erc1155_events(&client, start_from, step, Box::new(EthereumErc1155EventCallback {})).await;
+        } else {
+            println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
+        }
+    }
 
     Ok(())
 }
