@@ -117,9 +117,7 @@ mod tests {
     use super::*;
     use web3::{
         transports::http::Http,
-        types::{BlockNumber, FilterBuilder, Log, SyncState, H160, H256, U64, U256},
         Web3,
-        contract::{Contract, Options},
     };
 
     #[tokio::test]
@@ -140,6 +138,7 @@ mod tests {
 
     impl Erc721EventCallback for EthereumErc721EventCallback {
         fn on_erc721_event(&mut self, event: Erc721Event) {
+            println!("{:?}", event);
             self.events.push(event);
         }
     }

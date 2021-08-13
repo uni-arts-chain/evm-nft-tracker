@@ -153,3 +153,53 @@ fn build_event(log: &Log, token_id: U256, amount: U256) -> Erc1155Event {
         amount,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use web3::{
+        transports::http::Http,
+        Web3,
+    };
+
+    #[tokio::test]
+    async fn test_get_erc1155_events() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        let events = get_erc1155_events(&client, 13015344, 13015344).await.unwrap();
+        assert_eq!(10, events.len());
+    }
+
+    struct EthereumErc1155EventCallback {
+        events: Vec<Erc1155Event>,
+    }
+
+    impl Erc1155EventCallback for EthereumErc1155EventCallback {
+        fn on_erc1155_event(&mut self, event: Erc1155Event) {
+            println!("{:?}", event);
+            self.events.push(event);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_track_erc1155_events() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        let mut callback = EthereumErc1155EventCallback {
+            events: vec![],
+        };
+
+        track_erc1155_events(&client, 13015344, 1, Some(13015346), &mut callback).await;
+
+        assert_eq!(14, callback.events.len());
+
+    }
+
+}
+
