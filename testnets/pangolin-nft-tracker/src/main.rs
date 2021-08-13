@@ -24,7 +24,7 @@ struct PangolinErc1155EventCallback {
 }
 
 impl Erc1155EventCallback for PangolinErc1155EventCallback {
-    fn on_erc1155_event(&self, event: Erc1155Event) {
+    fn on_erc1155_event(&mut self, event: Erc1155Event) {
         println!("{:?}", event);
     }
 }
@@ -52,9 +52,9 @@ async fn main() -> anyhow::Result<()> {
     std::env::set_var(
         "RUST_LOG",
         r#"
-		nft_events=debug,
+        nft_events=debug,
         "#,
-    );
+        );
     env_logger::init();
 
     // |Platform | Value                                                                                 |
@@ -73,15 +73,17 @@ async fn main() -> anyhow::Result<()> {
         if let Ok(start_from) = args[1].parse::<u64>() {
             let web3 = Web3::new(
                 Http::new(rpc).unwrap(),
-            );
+                );
             let client = EvmClient::new("Pangolin", web3);
             let client_clone = client.clone();
 
             tokio::spawn(async move {
-                let callback = PangolinErc721EventCallback {};
-                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback)).await;
+                let mut callback = PangolinErc721EventCallback {};
+                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
             });
-            erc1155::track_erc1155_events(&client, start_from, step, Box::new(PangolinErc1155EventCallback {})).await;
+
+            let mut callback = PangolinErc1155EventCallback {};
+            erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
         } else {
             println!("Usage: pangolin-nft-tracker <PANGOLIN_BLOCK_NUMBER>")
         }

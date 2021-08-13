@@ -3,4 +3,5 @@
 members = [
     "libs/nft-events",
     "livenets/*",
+    "testnets/*",
 ]

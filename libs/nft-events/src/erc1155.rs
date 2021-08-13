@@ -8,6 +8,7 @@ use tokio::time::sleep;
 
 #[derive(Debug)]
 pub struct Erc1155Event {
+    pub block_number: Option<u64>,
     pub address: H160,
     pub transaction_hash: Option<H256>,
     pub operator: H160,
@@ -18,10 +19,10 @@ pub struct Erc1155Event {
 }
 
 pub trait Erc1155EventCallback: Send {
-    fn on_erc1155_event(&self, event: Erc1155Event);
+    fn on_erc1155_event(&mut self, event: Erc1155Event);
 }
 
-pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64, callback: Box<dyn Erc1155EventCallback>) {
+pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64, end_block: Option<u64>, callback: &mut dyn Erc1155EventCallback) {
     let mut step = step;
     let mut from = start_from;
     loop {
@@ -29,6 +30,11 @@ pub async fn track_erc1155_events(client: &EvmClient, start_from: u64, step: u64
             Ok(latest_block_number) => {
 
                 let to = std::cmp::min(from + step - 1, latest_block_number - 6);
+                if let Some(end_block) = end_block {
+                    if to > end_block {
+                        break;
+                    }
+                }
 
                 if to >= from {
                     debug!("Scan for {} ERC1155 events in block range of {} - {}({})", client.chain_name, from, to, to - from + 1);
@@ -137,6 +143,7 @@ fn build_event(log: &Log, token_id: U256, amount: U256) -> Erc1155Event {
     let from = H160::from(log.topics[2]);
     let to = H160::from(log.topics[3]);
     Erc1155Event {
+        block_number: log.block_number.map(|b| b.as_u64()),
         address: log.address, 
         transaction_hash: log.transaction_hash,
         operator,

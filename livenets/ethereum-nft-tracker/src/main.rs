@@ -24,7 +24,7 @@ struct EthereumErc1155EventCallback {
 }
 
 impl Erc1155EventCallback for EthereumErc1155EventCallback {
-    fn on_erc1155_event(&self, event: Erc1155Event) {
+    fn on_erc1155_event(&mut self, event: Erc1155Event) {
         println!("{:?}", event);
     }
 }
@@ -81,7 +81,9 @@ async fn main() -> anyhow::Result<()> {
                 let mut callback = EthereumErc721EventCallback {};
                 erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
             });
-            erc1155::track_erc1155_events(&client, start_from, step, Box::new(EthereumErc1155EventCallback {})).await;
+
+            let mut callback = EthereumErc1155EventCallback {};
+            erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
         } else {
             println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
         }
