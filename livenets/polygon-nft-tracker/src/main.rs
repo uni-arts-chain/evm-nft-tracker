@@ -14,7 +14,7 @@ struct PolygonErc721EventCallback {
 }
 
 impl Erc721EventCallback for PolygonErc721EventCallback {
-    fn on_erc721_event(&self, event: Erc721Event) {
+    fn on_erc721_event(&mut self, event: Erc721Event) {
         println!("{:?}", event);
     }
 }
@@ -78,7 +78,8 @@ async fn main() -> anyhow::Result<()> {
             let client_clone = client.clone();
 
             tokio::spawn(async move {
-                erc721::track_erc721_events(&client_clone, start_from, step, Box::new(PolygonErc721EventCallback {})).await;
+                let mut callback = PolygonErc721EventCallback {};
+                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
             });
             erc1155::track_erc1155_events(&client, start_from, step, Box::new(PolygonErc1155EventCallback {})).await;
         } else {
