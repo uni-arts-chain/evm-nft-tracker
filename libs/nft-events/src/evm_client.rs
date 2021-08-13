@@ -68,9 +68,7 @@ impl EvmClient {
             include_bytes!("./contracts/erc721.json"),
         )?;
         let interface_id: [u8; 4] = hex2array::<_, 4>("0x80ac58cd").unwrap();
-        Ok(
-            contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await?
-        )
+        contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await.or(Ok(false))
     }
 
     /// (name, symbol, token_uri)
@@ -99,8 +97,120 @@ impl EvmClient {
             include_bytes!("./contracts/erc1155.json"),
         )?;
         let interface_id: [u8; 4] = hex2array::<_, 4>("0xd9b67a26").unwrap();
-        Ok(
-            contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await?
-        )
+        contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await.or(Ok(false))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+    // use std::io::{stdin,stdout,Write};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_is_erc721() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        // ERC721
+        let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
+        assert_eq!(true, client.is_erc721(address).await.unwrap());
+
+        // Not ERC721
+        let address = H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
+        assert_eq!(false, client.is_erc721(address).await.unwrap());
+
+        // Not contract address
+        let address = H160::from_str("0x0000000000000000000000000000000000000000").unwrap();
+        assert_eq!(false, client.is_erc721(address).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_is_erc1155() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        // ERC1155
+        let address = H160::from_str("0x495f947276749ce646f68ac8c248420045cb7b5e").unwrap();
+        assert_eq!(true, client.is_erc1155(address).await.unwrap());
+
+        // Not ERC155, support ERC165
+        let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
+        assert_eq!(false, client.is_erc1155(address).await.unwrap());
+
+        // Not ERC1155, not support ERC165
+        let address = H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
+        assert_eq!(false, client.is_erc1155(address).await.unwrap());
+
+        // Not contract address
+        let address = H160::from_str("0x0000000000000000000000000000000000000000").unwrap();
+        assert_eq!(false, client.is_erc1155(address).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_get_erc721_metadata() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
+        let token_id = U256::from_dec_str("10279").unwrap();
+        let metadata = client.get_erc721_metadata(address, token_id).await.unwrap().unwrap();
+        let name = metadata.0;
+        let symbol = metadata.1;
+        let token_uri = metadata.2;
+        assert_eq!("MonsterBlocks", name);
+        assert_eq!("MONSTERBLOCK", symbol);
+        assert_eq!("https://api.monsterblocks.io/metadata/10279", token_uri);
+    }
+
+    #[tokio::test]
+    async fn test_get_logs() {
+        let transfer_topic = H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap();
+
+        // let mut infura_project_id=String::new();
+        // print!("Please enter your infura project id: ");
+        // let _ = stdout().flush();
+        // stdin().read_line(&mut infura_project_id).expect("Did not enter a correct infura project id?");
+        // if let Some('\n') = infura_project_id.chars().next_back() {
+        //     infura_project_id.pop();
+        // }
+        // if let Some('\r') = infura_project_id.chars().next_back() {
+        //     infura_project_id.pop();
+        // }
+
+        let infura_project_id = "60703fcc6b4e48079cfc5e385ee7af80";
+        let web3 = Web3::new(
+            Http::new(format!("https://mainnet.infura.io/v3/{}", infura_project_id).as_str()).unwrap(),
+        );
+        let client_infura = EvmClient::new("Ethereum", web3);
+        let logs_from_infura = client_infura.get_logs(None, vec![transfer_topic], 13000000, 13000010).await.unwrap();
+
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client_linkpool = EvmClient::new("Ethereum", web3);
+        let logs_from_linkpool = client_linkpool.get_logs(None, vec![transfer_topic], 13000000, 13000010).await.unwrap();
+        
+        assert_eq!(logs_from_linkpool.len(), logs_from_infura.len());
+    }
+
+    #[tokio::test]
+    async fn test_get_logs_fail_cased_by_too_big_range() {
+        let transfer_topic = H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap();
+
+        let infura_project_id = "60703fcc6b4e48079cfc5e385ee7af80";
+        let web3 = Web3::new(
+            Http::new(format!("https://mainnet.infura.io/v3/{}", infura_project_id).as_str()).unwrap(),
+        );
+        let client_infura = EvmClient::new("Ethereum", web3);
+        let result = client_infura.get_logs(None, vec![transfer_topic], 13000000, 13001000).await;
+        assert!(result.is_err());
     }
 }

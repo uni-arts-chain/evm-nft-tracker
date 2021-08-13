@@ -48,7 +48,7 @@ pub async fn track_erc721_events(client: &EvmClient, start_from: u64, step: u64,
                         Err(err) => {
                             match err {
                                 Error::Web3Error(web3::Error::Rpc(e)) => {
-                                    if e.message == "query returned more than 10000 results" {
+                                    if e.message.contains("more than") {
                                         error!("{}", e.message);
                                         step = std::cmp::max(step / 2, 1);
                                     } else {
