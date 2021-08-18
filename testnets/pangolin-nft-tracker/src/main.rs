@@ -9,13 +9,18 @@ use nft_events::{
 };
 use std::env;
 
+#[macro_use]
+extern crate async_trait;
+
 struct PangolinErc721EventCallback {
 
 }
 
+#[async_trait]
 impl Erc721EventCallback for PangolinErc721EventCallback {
-    fn on_erc721_event(&mut self, event: Erc721Event) {
+    async fn on_erc721_event(&mut self, event: Erc721Event, name: Option<String>, symbol: Option<String>, token_uri: Option<String>) -> nft_events::Result<()> {
         println!("{:?}", event);
+        Ok(())
     }
 }
 
@@ -77,13 +82,13 @@ async fn main() -> anyhow::Result<()> {
             let client = EvmClient::new("Pangolin", web3);
             let client_clone = client.clone();
 
-            tokio::spawn(async move {
-                let mut callback = PangolinErc721EventCallback {};
-                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
-            });
+            // tokio::spawn(async move {
+            //     let mut callback = PangolinErc721EventCallback {};
+            //     erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
+            // });
 
-            let mut callback = PangolinErc1155EventCallback {};
-            erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
+            // let mut callback = PangolinErc1155EventCallback {};
+            // erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
         } else {
             println!("Usage: pangolin-nft-tracker <PANGOLIN_BLOCK_NUMBER>")
         }

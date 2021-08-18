@@ -9,13 +9,18 @@ use nft_events::{
 };
 use std::env;
 
+#[macro_use]
+extern crate async_trait;
+
 struct PolygonErc721EventCallback {
 
 }
 
+#[async_trait]
 impl Erc721EventCallback for PolygonErc721EventCallback {
-    fn on_erc721_event(&mut self, event: Erc721Event) {
+    async fn on_erc721_event(&mut self, event: Erc721Event, name: Option<String>, symbol: Option<String>, token_uri: Option<String>) -> nft_events::Result<()> {
         println!("{:?}", event);
+        Ok(())
     }
 }
 
@@ -77,13 +82,13 @@ async fn main() -> anyhow::Result<()> {
             let client = EvmClient::new("Polygon", web3);
             let client_clone = client.clone();
 
-            tokio::spawn(async move {
-                let mut callback = PolygonErc721EventCallback {};
-                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
-            });
+            // tokio::spawn(async move {
+            //     let mut callback = PolygonErc721EventCallback {};
+            //     erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
+            // });
 
-            let mut callback = PolygonErc1155EventCallback {};
-            erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
+            // let mut callback = PolygonErc1155EventCallback {};
+            // erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
         } else {
             println!("Usage: polygon-nft-tracker <POLYGON_BLOCK_NUMBER>")
         }

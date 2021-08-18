@@ -2,21 +2,49 @@ use web3::{
     Web3,
     transports::Http,
 };
+use web3::types::{H256, H160, Log, U256};
 use nft_events::{
     EvmClient,
-    erc721, Erc721Event, Erc721EventCallback,
+    erc721, erc721_db, Erc721Event, Erc721EventCallback,
     erc1155, Erc1155Event, Erc1155EventCallback,
 };
 use std::env;
+use rusqlite::{Connection, Result};
+use rusqlite::NO_PARAMS;
+use directories_next::ProjectDirs;
+use std::fs::{self, File, OpenOptions};
+use std::path::{Path, PathBuf};
+
+#[macro_use]
+extern crate log;
+
+#[macro_use]
+extern crate async_trait;
 
 struct EthereumErc721EventCallback {
+    evm_client: EvmClient,
+}
+
+impl EthereumErc721EventCallback {
+    fn new(client: EvmClient) -> Self {
+        Self {
+            evm_client: client,
+        }
+    }
 
 }
 
+#[async_trait]
 impl Erc721EventCallback for EthereumErc721EventCallback {
-    fn on_erc721_event(&mut self, event: Erc721Event) {
-        println!("{:?}", event);
+
+    async fn on_erc721_event(&mut self, event: Erc721Event, name: Option<String>, symbol: Option<String>, token_uri: Option<String>) -> nft_events::Result<()> {
+        println!("------------------------------------------------------------------------------------------");
+        println!("event: {:?}", event);
+        println!("name: {:?}, symbol: {:?}, token_uri: {:?}", name, symbol, token_uri);
+
+        Ok(())
     }
+
 }
 
 struct EthereumErc1155EventCallback {
@@ -46,25 +74,37 @@ impl Default for EthereumNftTrackerConfig {
     }
 }
 
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     std::env::set_var(
         "RUST_LOG",
         r#"
+        ethereum_nft_tracker=info,
 		nft_events=debug,
         "#,
     );
     env_logger::init();
 
-    // |Platform | Value                                                                                 |
-    // | ------- | ------------------------------------------------------------------------------------- |
-    // | Linux   | `$XDG_CONFIG_HOME`/rs.ethereum-nft-tracker or `$HOME`/.config/rs.ethereum-nft-tracker |
-    // | macOS   | `$HOME`/Library/Preferences/rs.ethereum-nft-tracker                                   |
-    // | Windows | `{FOLDERID_RoamingAppData}`\\rs.ethereum-nft-tracker\\config                          |
-    let cfg: EthereumNftTrackerConfig = confy::load("ethereum-nft-tracker")?;
+    let blockchain_name = "ethereum";
+
+    // Data dir
+    let app_name = format!("{}-nft-tracker", blockchain_name);
+    let project = ProjectDirs::from("pro", "uniscan", app_name.as_str()).unwrap();
+    let data_dir = project.data_dir().to_str().unwrap();
+    info!("DATA DIR : {}", data_dir);
+
+    // Read config from config file
+    let config_path: PathBuf = [data_dir, "config.toml"].iter().collect();
+    let cfg: EthereumNftTrackerConfig = confy::load_path(config_path)?;
     let ethereum_rpc = &cfg.rpc;
     let step = cfg.step;
+    info!("  {} rpc : {}", blockchain_name, ethereum_rpc);
+    info!("  scan step : {} blocks", step);
+    
+    // Prepare database to store nft info
+    let database_path: PathBuf = [data_dir, "data.db"].iter().collect();
+    let conn_erc721 = Connection::open(database_path.clone()).unwrap();
+    erc721_db::create_tables_if_not_exist(&conn_erc721)?;
 
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
@@ -75,15 +115,17 @@ async fn main() -> anyhow::Result<()> {
                 Http::new(ethereum_rpc).unwrap(),
             );
             let client = EvmClient::new("Ethereum", web3);
+
             let client_clone = client.clone();
+                let mut callback = EthereumErc721EventCallback::new(client_clone.clone());
+                erc721::track_erc721_events(&client_clone, &conn_erc721, start_from, step, None, &mut callback).await;
+            // tokio::spawn(async move {
+            //     let mut callback = EthereumErc721EventCallback::new(client_clone.clone(), conn_erc721);
+            //     erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
+            // });
 
-            tokio::spawn(async move {
-                let mut callback = EthereumErc721EventCallback {};
-                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
-            });
-
-            let mut callback = EthereumErc1155EventCallback {};
-            erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
+            // let mut callback = EthereumErc1155EventCallback {};
+            // erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
         } else {
             println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
         }

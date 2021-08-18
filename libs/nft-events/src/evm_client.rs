@@ -72,10 +72,10 @@ impl EvmClient {
     }
 
     /// (name, symbol, token_uri)
-    pub async fn get_erc721_metadata(&self, contract_address: H160, token_id: U256) -> Result<Option<(String, String, String)>> {
+    pub async fn get_erc721_metadata(&self, contract_address: &H160, token_id: &U256) -> Result<Option<(String, String, String)>> {
         let contract = Contract::from_json(
             self.web3.eth(),
-            contract_address,
+            contract_address.clone(),
             include_bytes!("./contracts/erc721.json"),
         )?;
         let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
@@ -83,8 +83,42 @@ impl EvmClient {
         if supports_metadata {
             let name: String = contract.query("name", (), None, Options::default(), None).await?;
             let symbol: String = contract.query("symbol", (), None, Options::default(), None).await?;
-            let token_uri: String = contract.query("tokenURI", (token_id,), None, Options::default(), None).await?;
+            let token_uri: String = contract.query("tokenURI", (token_id.clone(),), None, Options::default(), None).await?;
             Ok(Some((name, symbol, token_uri)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn get_erc721_name_symbol(&self, contract_address: &H160) -> Result<Option<(String, String)>> {
+        let contract = Contract::from_json(
+            self.web3.eth(),
+            contract_address.clone(),
+            include_bytes!("./contracts/erc721.json"),
+        )?;
+        let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
+        let supports_metadata: bool = contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await?;
+        if supports_metadata {
+            let name: String = contract.query("name", (), None, Options::default(), None).await?;
+            let symbol: String = contract.query("symbol", (), None, Options::default(), None).await?;
+            Ok(Some((name, symbol)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn get_erc721_token_uri(&self, contract_address: &H160, token_id: &U256) -> Result<Option<String>> {
+        let contract = Contract::from_json(
+            self.web3.eth(),
+            contract_address.clone(),
+            include_bytes!("./contracts/erc721.json"),
+        )?;
+        
+        let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
+        let supports_metadata: bool = contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await?;
+        if supports_metadata {
+            let token_uri: String = contract.query("tokenURI", (token_id.clone(),), None, Options::default(), None).await?;
+            Ok(Some(token_uri))
         } else {
             Ok(None)
         }
@@ -161,7 +195,7 @@ mod tests {
 
         let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
         let token_id = U256::from_dec_str("10279").unwrap();
-        let metadata = client.get_erc721_metadata(address, token_id).await.unwrap().unwrap();
+        let metadata = client.get_erc721_metadata(&address, &token_id).await.unwrap().unwrap();
         let name = metadata.0;
         let symbol = metadata.1;
         let token_uri = metadata.2;
@@ -213,4 +247,35 @@ mod tests {
         let result = client_infura.get_logs(None, vec![transfer_topic], 13000000, 13001000).await;
         assert!(result.is_err());
     }
+
+    #[tokio::test]
+    async fn test_get_erc721_token_uri() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
+        let token_id = U256::from_dec_str("10279").unwrap();
+        let token_uri = client.get_erc721_token_uri(&address, &token_id).await.unwrap().unwrap();
+        assert_eq!("https://api.monsterblocks.io/metadata/10279", token_uri);
+
+    }
+
+    #[tokio::test]
+    async fn test_get_erc721_token_uri_fail() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        let address = H160::from_str("0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85").unwrap();
+        let token_id = U256::from_dec_str("38845564502965131371508063114826058623537470318810020350714825917421388823764").unwrap();
+        let token_uri = client.get_erc721_token_uri(&address, &token_id).await.unwrap();
+        assert_eq!(None, token_uri);
+
+    }
+
+    
+
 }
