@@ -7,6 +7,8 @@ pub mod erc721_evm;
 pub mod erc721;
 
 // erc1155
+pub mod erc1155_db;
+pub mod erc1155_evm;
 pub mod erc1155;
 
 pub use error::Error;
@@ -17,9 +19,8 @@ pub use evm_client::EvmClient;
 pub use erc721_evm::Erc721Event;
 pub use erc721::Erc721EventCallback;
 
-pub use erc1155::{
-    Erc1155Event, Erc1155EventCallback,
-};
+pub use erc1155_evm::Erc1155Event;
+pub use erc1155::Erc1155EventCallback;
 
 #[macro_use]
 extern crate log;

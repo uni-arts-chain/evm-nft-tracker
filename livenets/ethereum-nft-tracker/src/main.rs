@@ -51,9 +51,12 @@ struct EthereumErc1155EventCallback {
 
 }
 
+#[async_trait]
 impl Erc1155EventCallback for EthereumErc1155EventCallback {
-    fn on_erc1155_event(&mut self, event: Erc1155Event) {
+    async fn on_erc1155_event(&mut self, event: Erc1155Event) -> nft_events::Result<()> {
+        println!("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
         println!("{:?}", event);
+        Ok(())
     }
 }
 
@@ -117,15 +120,13 @@ async fn main() -> anyhow::Result<()> {
             let client = EvmClient::new("Ethereum", web3);
 
             let client_clone = client.clone();
+            tokio::spawn(async move {
                 let mut callback = EthereumErc721EventCallback::new(client_clone.clone());
-                erc721::track_erc721_events(&client_clone, &conn_erc721, start_from, step, None, &mut callback).await;
-            // tokio::spawn(async move {
-            //     let mut callback = EthereumErc721EventCallback::new(client_clone.clone(), conn_erc721);
-            //     erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
-            // });
+                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
+            });
 
-            // let mut callback = EthereumErc1155EventCallback {};
-            // erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
+            let mut callback = EthereumErc1155EventCallback {};
+            erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
         } else {
             println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
         }

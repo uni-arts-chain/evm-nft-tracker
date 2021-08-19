@@ -28,9 +28,11 @@ struct PangolinErc1155EventCallback {
 
 }
 
+#[async_trait]
 impl Erc1155EventCallback for PangolinErc1155EventCallback {
-    fn on_erc1155_event(&mut self, event: Erc1155Event) {
+    async fn on_erc1155_event(&mut self, event: Erc1155Event) -> nft_events::Result<()> {
         println!("{:?}", event);
+        Ok(())
     }
 }
 
