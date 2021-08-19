@@ -1,11 +1,9 @@
 use crate::{
     Result, Error, EvmClient, erc721_db, erc721_evm, erc721_evm::Erc721Event
 };
-use web3::types::{H256, H160, Log, U256};
-use array_bytes::hex2bytes_unchecked as bytes;
+use web3::types::{H160, U256};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
-use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 

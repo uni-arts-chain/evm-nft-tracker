@@ -1,9 +1,7 @@
-use crate::{
-    Result, Error
-};
+use crate::Result;
 
 use rusqlite::{
-    Connection, params, NO_PARAMS
+    Connection, params
 };
 
 pub fn create_tables_if_not_exist(conn: &Connection) -> Result<()> {
@@ -14,7 +12,7 @@ pub fn create_tables_if_not_exist(conn: &Connection) -> Result<()> {
              name text,
              symbol text
          )",
-        NO_PARAMS,
+        [],
     )?;
     conn.execute(
         "create table if not exists erc721_tokens (
@@ -23,7 +21,7 @@ pub fn create_tables_if_not_exist(conn: &Connection) -> Result<()> {
              collection_id integer not null references erc721_collections(id),
              token_uri text
          )",
-        NO_PARAMS,
+        [],
     )?;
 
     Ok(()) 
@@ -36,7 +34,7 @@ pub fn get_collection_from_db(conn: &Connection, address: &str) -> Result<Option
         sql.as_str()
     )?;
 
-    match stmt.query_row(NO_PARAMS, |row| {
+    match stmt.query_row([], |row| {
         Ok(
             (
                 row.get(0)?,
@@ -47,7 +45,7 @@ pub fn get_collection_from_db(conn: &Connection, address: &str) -> Result<Option
         )
     }) {
         Ok(collection) => Ok(Some(collection)),
-        Err(err@rusqlite::Error::QueryReturnedNoRows) => {
+        Err(_err@rusqlite::Error::QueryReturnedNoRows) => {
             Ok(None)
         },
         Err(err) => {
@@ -94,7 +92,7 @@ pub fn get_token_from_db(conn: &Connection, collection_id: usize, token_id: &str
         sql.as_str()
     )?;
 
-    match stmt.query_row(NO_PARAMS, |row| {
+    match stmt.query_row([], |row| {
         Ok(
             (
                 row.get(0)?,
@@ -105,7 +103,7 @@ pub fn get_token_from_db(conn: &Connection, collection_id: usize, token_id: &str
         )
     }) {
         Ok(token) => Ok(Some(token)),
-        Err(err@rusqlite::Error::QueryReturnedNoRows) => {
+        Err(_err@rusqlite::Error::QueryReturnedNoRows) => {
             Ok(None)
         },
         Err(err) => {

@@ -1,5 +1,5 @@
 use crate::{
-    Result, Error, EvmClient
+    Result, EvmClient
 };
 use web3::types::{H256, H160, Log, U256, Bytes};
 use array_bytes::hex2bytes_unchecked as bytes;

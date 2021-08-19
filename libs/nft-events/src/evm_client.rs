@@ -9,12 +9,12 @@ use array_bytes::hex2array;
 
 #[derive(Clone)]
 pub struct EvmClient {
-    pub chain_name: &'static str,
+    pub chain_name: String,
     web3: Web3<Http>,
 }
 
 impl EvmClient {
-    pub fn new(chain_name: &'static str, web3: Web3<Http>) -> EvmClient {
+    pub fn new(chain_name: String, web3: Web3<Http>) -> EvmClient {
         EvmClient { 
             chain_name,
             web3

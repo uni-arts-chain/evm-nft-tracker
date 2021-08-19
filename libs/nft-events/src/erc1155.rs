@@ -1,8 +1,7 @@
 use crate::{
     Result, Error, EvmClient, erc1155_db, erc1155_evm, erc1155_evm::Erc1155Event
 };
-use web3::types::{H256, H160, Log, U256, Bytes};
-use array_bytes::hex2bytes_unchecked as bytes;
+use web3::types::{H160, U256};
 use std::time::Duration;
 use tokio::time::sleep;
 

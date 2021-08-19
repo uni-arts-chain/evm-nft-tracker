@@ -1,13 +1,13 @@
-use web3::{
-    Web3,
-    transports::Http,
-};
 use nft_events::{
-    EvmClient,
-    erc721, Erc721Event, Erc721EventCallback,
-    erc1155, Erc1155Event, Erc1155EventCallback,
+    Erc721Event, Erc721EventCallback,
+    Erc1155Event, Erc1155EventCallback,
 };
+use directories_next::ProjectDirs;
+use std::path::PathBuf;
 use std::env;
+
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 extern crate async_trait;
@@ -56,43 +56,41 @@ impl Default for PangolinNftTrackerConfig {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    std::env::set_var(
+    env::set_var(
         "RUST_LOG",
         r#"
-        nft_events=debug,
+        pangolin_nft_tracker=info,
+		nft_events=debug,
         "#,
-        );
+    );
     env_logger::init();
 
-    // |Platform | Value                                                                                 |
-    // | ------- | ------------------------------------------------------------------------------------- |
-    // | Linux   | `$XDG_CONFIG_HOME`/rs.pangolin-nft-tracker or `$HOME`/.config/rs.pangolin-nft-tracker |
-    // | macOS   | `$HOME`/Library/Preferences/rs.pangolin-nft-tracker                                   |
-    // | Windows | `{FOLDERID_RoamingAppData}`\\rs.pangolin-nft-tracker\\config                          |
-    let cfg: PangolinNftTrackerConfig = confy::load("pangolin-nft-tracker")?;
+    let chain_name = "Pangolin";
+
+    // Data dir
+    let app_name = format!("{}-nft-tracker", chain_name.to_lowercase());
+    let project = ProjectDirs::from("pro", "uniscan", app_name.as_str()).unwrap();
+    let data_dir = project.data_dir().to_str().unwrap();
+    info!("DATA & CONFIG DIR : {}", data_dir);
+
+    // Read config from config file
+    let config_path: PathBuf = [data_dir, "config.toml"].iter().collect();
+    let cfg: PangolinNftTrackerConfig = confy::load_path(config_path)?;
     let rpc = &cfg.rpc;
     let step = cfg.step;
-
+    info!("  {} rpc : {}", chain_name, rpc);
+    info!("  Track step : {} blocks", step);
+    
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        println!("Usage: pangolin-nft-tracker <PANGOLIN_BLOCK_NUMBER>")
+        println!("Usage: pangolin-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
     } else {
         if let Ok(start_from) = args[1].parse::<u64>() {
-            let web3 = Web3::new(
-                Http::new(rpc).unwrap(),
-                );
-            let client = EvmClient::new("Pangolin", web3);
-            let client_clone = client.clone();
-
-            // tokio::spawn(async move {
-            //     let mut callback = PangolinErc721EventCallback {};
-            //     erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
-            // });
-
-            // let mut callback = PangolinErc1155EventCallback {};
-            // erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
+            let mut erc721_cb = PangolinErc721EventCallback {};
+            let mut erc1155_cb = PangolinErc1155EventCallback {};
+            nft_events::start_tracking(chain_name, rpc, data_dir, start_from, step, &mut erc721_cb, &mut erc1155_cb).await?;
         } else {
-            println!("Usage: pangolin-nft-tracker <PANGOLIN_BLOCK_NUMBER>")
+            println!("Usage: pangolin-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
         }
     }
 
