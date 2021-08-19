@@ -6,14 +6,13 @@ use web3::types::{H256, H160, Log, U256};
 use nft_events::{
     EvmClient,
     erc721, erc721_db, Erc721Event, Erc721EventCallback,
-    erc1155, Erc1155Event, Erc1155EventCallback,
+    erc1155, erc1155_db, Erc1155Event, Erc1155EventCallback,
 };
 use std::env;
-use rusqlite::{Connection, Result};
-use rusqlite::NO_PARAMS;
 use directories_next::ProjectDirs;
 use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
+use rusqlite::Connection;
 
 #[macro_use]
 extern crate log;
@@ -53,9 +52,11 @@ struct EthereumErc1155EventCallback {
 
 #[async_trait]
 impl Erc1155EventCallback for EthereumErc1155EventCallback {
-    async fn on_erc1155_event(&mut self, event: Erc1155Event) -> nft_events::Result<()> {
+    async fn on_erc1155_event(&mut self, event: Erc1155Event, token_uri: String) -> nft_events::Result<()> {
         println!("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-        println!("{:?}", event);
+        println!("event: {:?}", event);
+        println!("token_uri: {:?}", token_uri);
+        
         Ok(())
     }
 }
@@ -104,10 +105,6 @@ async fn main() -> anyhow::Result<()> {
     info!("  {} rpc : {}", blockchain_name, ethereum_rpc);
     info!("  scan step : {} blocks", step);
     
-    // Prepare database to store nft info
-    let database_path: PathBuf = [data_dir, "data.db"].iter().collect();
-    let conn_erc721 = Connection::open(database_path.clone()).unwrap();
-    erc721_db::create_tables_if_not_exist(&conn_erc721)?;
 
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
@@ -119,14 +116,27 @@ async fn main() -> anyhow::Result<()> {
             );
             let client = EvmClient::new("Ethereum", web3);
 
-            let client_clone = client.clone();
-            tokio::spawn(async move {
-                let mut callback = EthereumErc721EventCallback::new(client_clone.clone());
-                erc721::track_erc721_events(&client_clone, start_from, step, None, &mut callback).await;
-            });
+            // ERC721
+            // ******************************************************************
+            // Prepare database to store erc721 metadata
+            let database_path: PathBuf = [data_dir, "erc721.db"].iter().collect();
+            let db_conn1 = Connection::open(database_path.clone()).unwrap();
+            erc721_db::create_tables_if_not_exist(&db_conn1).unwrap();
+                
+            let mut callback = EthereumErc721EventCallback::new(client.clone());
+            let t1 = erc721::track_erc721_events(&client, &db_conn1, start_from, step, None, &mut callback);
+
+            // ERC1155
+            // ******************************************************************
+            // Prepare database to store erc721 metadata
+            let database_path: PathBuf = [data_dir, "erc1155.db"].iter().collect();
+            let db_conn2 = Connection::open(database_path.clone()).unwrap();
+            erc1155_db::create_tables_if_not_exist(&db_conn2).unwrap();
 
             let mut callback = EthereumErc1155EventCallback {};
-            erc1155::track_erc1155_events(&client, start_from, step, None, &mut callback).await;
+            let t2 = erc1155::track_erc1155_events(&client, &db_conn2, start_from, step, None, &mut callback);
+
+            tokio::join!(t1, t2);
         } else {
             println!("Usage: ethereum-nft-tracker <ETHEREUM_BLOCK_NUMBER>")
         }
@@ -134,3 +144,4 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+

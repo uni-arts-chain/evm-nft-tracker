@@ -30,7 +30,7 @@ struct MoonriverErc1155EventCallback {
 
 #[async_trait]
 impl Erc1155EventCallback for MoonriverErc1155EventCallback {
-    async fn on_erc1155_event(&mut self, event: Erc1155Event) -> nft_events::Result<()> {
+    async fn on_erc1155_event(&mut self, event: Erc1155Event, token_uri: String) -> nft_events::Result<()> {
         println!("{:?}", event);
         Ok(())
     }

@@ -133,6 +133,33 @@ impl EvmClient {
         let interface_id: [u8; 4] = hex2array::<_, 4>("0xd9b67a26").unwrap();
         contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await.or(Ok(false))
     }
+
+    pub async fn get_erc1155_token_uri(&self, contract_address: &H160, token_id: &U256) -> Result<String> {
+        let contract = Contract::from_json(
+            self.web3.eth(),
+            contract_address.clone(),
+            include_bytes!("./contracts/erc1155.json"),
+        )?;
+
+        let token_uri: String = contract.query("uri", (token_id.clone(),), None, Options::default(), None).await?;
+        Ok(token_uri)
+
+        // match contract.query("uri", (token_id.clone(),), None, Options::default(), None).await {
+        //     Ok(token_uri@String) => Ok(Some(token_uri)),
+        //     Err(err) => {
+                
+        //     }
+        // }
+        
+        // let interface_id: [u8; 4] = hex2array::<_, 4>("0x0e89341c").unwrap();
+        // let supports_metadata: bool = contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await?;
+        // if supports_metadata {
+        //     let token_uri: String = contract.query("uri", (token_id.clone(),), None, Options::default(), None).await?;
+        //     Ok(Some(token_uri))
+        // } else {
+        //     Ok(None)
+        // }
+    }
 }
 
 #[cfg(test)]
@@ -276,6 +303,20 @@ mod tests {
 
     }
 
-    
+    #[tokio::test]
+    async fn test_get_erc1155_token_uri() {
+        let web3 = Web3::new(
+            Http::new("https://main-light.eth.linkpool.io").unwrap(),
+        );
+        let client = EvmClient::new("Ethereum", web3);
+
+        // This erc1155 contract is not support erc1155 metadata extension, beacause supportsInterface(0x0e89341c) retruns false,
+        // but it has the uri(token_id) method
+        let address = H160::from_str("0x76be3b62873462d2142405439777e971754e8e77").unwrap();
+        let token_id = U256::from_dec_str("10276").unwrap();
+        let token_uri = client.get_erc1155_token_uri(&address, &token_id).await.unwrap();
+        assert_eq!("ipfs://ipfs/QmXTSZ7ag9yzQFkvUrZ5qr7KuCUtW2jeDiYJrJ8s7TpSNb", token_uri);
+
+    }
 
 }

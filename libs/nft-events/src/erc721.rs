@@ -8,7 +8,6 @@ use tokio::time::sleep;
 use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
-use rusqlite::params;
 
 #[async_trait]
 pub trait Erc721EventCallback: Send {
@@ -16,7 +15,6 @@ pub trait Erc721EventCallback: Send {
 }
 
 pub async fn track_erc721_events(evm_client: &EvmClient, db_conn: &Connection, start_from: u64, step: u64, end_block: Option<u64>, callback: &mut dyn Erc721EventCallback) {
-    // create tables if not exist
     let mut step = step;
     let mut from = start_from;
     loop {
