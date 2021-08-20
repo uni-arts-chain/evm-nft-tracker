@@ -104,9 +104,18 @@ async fn save_metadata_to_db_if_not_exists(evm_client: &EvmClient, db_conn: &Con
     if token.is_none() {
         let token_uri = evm_client.get_erc1155_token_uri(address, token_id).await?;
         erc1155_db::add_token_to_db(db_conn, token_id.to_string(), collection_id, Some(token_uri))?;
+        // if remove_whitespace(&token_uri).as_str() == "" {
+        //     return Err(Error::Other("Blank token uri".to_owned()));
+        // } else {
+        //     erc1155_db::add_token_to_db(db_conn, token_id.to_string(), collection_id, Some(token_uri))?;
+        // }
     }
     Ok(())
 }
+
+// fn remove_whitespace(s: &str) -> String {
+//     s.chars().filter(|c| !c.is_whitespace()).collect()
+// }
 
 #[cfg(test)]
 mod tests {
