@@ -5,6 +5,40 @@ The program contains two main parts, a library and some executables. The library
 
 The ERC-721 and ERC-1155 contracts deployed on EVM-compatible virtual machines are easily supported. A new EVM-compatible chain can be supported by simply creating an executable.
 
+## Usage
+
+### Run
+
+#### Prepare rust environment
+
+https://www.rust-lang.org/tools/install
+
+#### Compile
+
+```bash
+git clone https://github.com/uni-arts-chain/evm-nft-tracker.git
+cd evm-nft-tracker
+cargo b --release
+```
+
+#### Run
+
+This project currently contains several NFT tracker executables, `ethereum-nft-tracker`, `moonriver-nft-tracker`, `pangolin-nft-tracker` and `polygon-nft-tracker`, the following is an example of ethereum.
+
+```
+./target/release/ethereum-nft-tracker 12994586
+```
+
+The only parameter is the start block height.
+
+Other executables run in a similar manner.
+
+### Develop a new NFT tracker for a new blockchain
+
+If the new blockchain supports EVM, you can easily develop a new NFT tracker executable.
+
+This project contains a library named `nft-events`, which was used to develop the executables above. You can use these executables as examples if you want to develop your own NFT tracker. For more information about the `nft-events` library see the description in `Project Structure` section.
+
 ## Rationale
 
 The [ERC-721](https://eips.ethereum.org/EIPS/eip-721) and [ERC - 1155](https://eips.ethereum.org/EIPS/eip-1155) are Ethereum protocals and are also supported by other projects running on EVM-compatible virtual machines. As these two standards are widely used by NFTs issued on EVM, this project only focuses on NFTs of ERC-721 and ERC-1155.
