@@ -31,7 +31,15 @@ This project currently contains several NFT tracker executables, `ethereum-nft-t
 
 The only parameter is the start block height.
 
-Other executables run in a similar manner.
+Upon startup, the program will print out the config dir and the contents of the configuration, something like this:
+
+```
+[2021-08-21T06:00:03Z INFO  ethereum_nft_tracker] DATA & CONFIG DIR : /Users/akiwu/Library/Application Support/pro.uniscan.ethereum-nft-tracker
+[2021-08-21T06:00:03Z INFO  ethereum_nft_tracker]   Ethereum rpc : https://main-light.eth.linkpool.io
+[2021-08-21T06:00:03Z INFO  ethereum_nft_tracker]   Track step : 6 blocks
+```
+
+You can find the `config.toml` under the config dir. You can change the config and restart the program to apply the new configuration.
 
 ### Develop a new NFT tracker for a new blockchain
 
