@@ -132,3 +132,7 @@ The executable runs and keeps getting NFT events, then sends the NFT events and 
 
 1. huge amount of historical data, which needs to be synchronized for a long time to get all the data
 2. Stability of blockchain nodes, as it takes a long time to connect nodes to get data, so stable nodes are needed for access. Nowadays, public nodes are generally limited in one way or another.
+
+## License
+
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
