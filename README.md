@@ -1,5 +1,4 @@
 # evm-nft-tracker
-
 This is a tool for discovering EVM-based NFTs, currently supporting the ERC-721 and ERC-1155 standards.
 The program contains two main parts, a library and some executables. The library is the common part and is used by the executables to discover NFTs events.
 
@@ -16,17 +15,17 @@ https://www.rust-lang.org/tools/install
 #### Compile
 
 ```bash
-git clone https://github.com/uni-arts-chain/evm-nft-tracker.git
-cd evm-nft-tracker
-cargo b --release
+$ git clone https://github.com/uni-arts-chain/evm-nft-tracker.git
+$ cd evm-nft-tracker
+$ cargo b --release
 ```
 
 #### Run
 
 This project currently contains several NFT tracker executables, `ethereum-nft-tracker`, `moonriver-nft-tracker`, `pangolin-nft-tracker` and `polygon-nft-tracker`, the following is an example of ethereum.
 
-```
-./target/release/ethereum-nft-tracker 12994586
+```bash
+$ ./target/release/ethereum-nft-tracker 12994586
 ```
 
 The only parameter is the start block height.
@@ -46,6 +45,12 @@ You can find the `config.toml` under the config dir. You can change the config a
 If the new blockchain supports EVM, you can easily develop a new NFT tracker executable.
 
 This project contains a library named `nft-events`, which was used to develop the executables above. You can use these executables as examples if you want to develop your own NFT tracker. For more information about the `nft-events` library see the description in `Project Structure` section.
+
+## Test
+
+```bash
+$ cargo test
+```
 
 ## Rationale
 
@@ -127,6 +132,7 @@ The ERC-1155 part is similar, includes `erc1155.rs`, `erc1155_evm.rs` and `erc11
 The crates under the two directories are specific executables for different blockchains, each implementing a tracker for their blockchain. These executables mainly call `track_erc721_events` and `track_erc1155_events` of `nft-events`  lib to get the NFT events for their respective chains, and each has its own parameters.
 
 The executable runs and keeps getting NFT events, then sends the NFT events and NFT metadata to the message queue of the [The NFT Explorer](https://github.com/uni-arts-chain/uniscan) (currently they are only printed into the stdout).
+
 
 ## Challenges
 
