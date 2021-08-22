@@ -102,7 +102,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         let events = get_erc1155_events(&client, 13015344, 13015344).await.unwrap();
         assert_eq!(10, events.len());

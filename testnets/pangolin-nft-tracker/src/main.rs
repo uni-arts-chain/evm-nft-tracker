@@ -19,7 +19,10 @@ struct PangolinErc721EventCallback {
 #[async_trait]
 impl Erc721EventCallback for PangolinErc721EventCallback {
     async fn on_erc721_event(&mut self, event: Erc721Event, name: Option<String>, symbol: Option<String>, token_uri: Option<String>) -> nft_events::Result<()> {
-        println!("{:?}", event);
+        println!("------------------------------------------------------------------------------------------");
+        println!("event: {:?}", event);
+        println!("name: {:?}, symbol: {:?}, token_uri: {:?}", name, symbol, token_uri);
+
         Ok(())
     }
 }
@@ -31,7 +34,10 @@ struct PangolinErc1155EventCallback {
 #[async_trait]
 impl Erc1155EventCallback for PangolinErc1155EventCallback {
     async fn on_erc1155_event(&mut self, event: Erc1155Event, token_uri: String) -> nft_events::Result<()> {
-        println!("{:?}", event);
+        println!("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        println!("event: {:?}", event);
+        println!("token_uri: {:?}", token_uri);
+        
         Ok(())
     }
 }

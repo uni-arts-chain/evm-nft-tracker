@@ -129,7 +129,7 @@ mod tests {
 
     #[async_trait]
     impl Erc721EventCallback for EthereumErc721EventCallback {
-        async fn on_erc721_event(&mut self, event: Erc721Event, name: Option<String>, symbol: Option<String>, token_uri: Option<String>) -> Result<()> {
+        async fn on_erc721_event(&mut self, event: Erc721Event, _name: Option<String>, _symbol: Option<String>, _token_uri: Option<String>) -> Result<()> {
             self.events.push(event);
             Ok(())
         }
@@ -137,23 +137,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_track_erc721_events() {
-        std::env::set_var(
-            "RUST_LOG",
-            r#"
-            nft_events=debug,
-            "#,
-        );
-        env_logger::init();
-
         //
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         //
-        std::fs::remove_file("./test5.db");
-        let conn = Connection::open("./test5.db").unwrap();
+        let conn = Connection::open("./test7.db").unwrap();
         erc721_db::create_tables_if_not_exist(&conn).unwrap();
 
         //
@@ -163,7 +154,7 @@ mod tests {
         track_erc721_events(&client, &conn, 13015344, 1, Some(13015346), &mut callback).await;
         assert_eq!(15, callback.events.len());
 
-        std::fs::remove_file("./test5.db");
+        std::fs::remove_file("./test7.db").unwrap();
 
     }
 

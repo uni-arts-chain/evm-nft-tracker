@@ -131,7 +131,7 @@ mod tests {
 
     #[async_trait]
     impl Erc1155EventCallback for EthereumErc1155EventCallback {
-        async fn on_erc1155_event(&mut self, event: Erc1155Event, token_uri: String) -> Result<()> {
+        async fn on_erc1155_event(&mut self, event: Erc1155Event, _token_uri: String) -> Result<()> {
             self.events.push(event);
             Ok(())
         }
@@ -139,27 +139,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_track_erc1155_events() {
-        std::env::set_var(
-            "RUST_LOG",
-            r#"
-            nft_events=debug,
-            "#,
-        );
-        env_logger::init();
-
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
+        //
+        let conn = Connection::open("./test6.db").unwrap();
+        erc1155_db::create_tables_if_not_exist(&conn).unwrap();
+
+        //
         let mut callback = EthereumErc1155EventCallback {
             events: vec![],
         };
-
-        track_erc1155_events(&client, 13015344, 1, Some(13015346), &mut callback).await;
-
+        track_erc1155_events(&client, &conn, 13015344, 1, Some(13015346), &mut callback).await;
         assert_eq!(14, callback.events.len());
 
+        std::fs::remove_file("./test6.db").unwrap();
     }
 
 }

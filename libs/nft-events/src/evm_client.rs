@@ -174,7 +174,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         // ERC721
         let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
@@ -194,7 +194,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         // ERC1155
         let address = H160::from_str("0x495f947276749ce646f68ac8c248420045cb7b5e").unwrap();
@@ -218,7 +218,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
         let token_id = U256::from_dec_str("10279").unwrap();
@@ -250,13 +250,13 @@ mod tests {
         let web3 = Web3::new(
             Http::new(format!("https://mainnet.infura.io/v3/{}", infura_project_id).as_str()).unwrap(),
         );
-        let client_infura = EvmClient::new("Ethereum", web3);
+        let client_infura = EvmClient::new("Ethereum".to_owned(), web3);
         let logs_from_infura = client_infura.get_logs(None, vec![transfer_topic], 13000000, 13000010).await.unwrap();
 
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client_linkpool = EvmClient::new("Ethereum", web3);
+        let client_linkpool = EvmClient::new("Ethereum".to_owned(), web3);
         let logs_from_linkpool = client_linkpool.get_logs(None, vec![transfer_topic], 13000000, 13000010).await.unwrap();
         
         assert_eq!(logs_from_linkpool.len(), logs_from_infura.len());
@@ -270,7 +270,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new(format!("https://mainnet.infura.io/v3/{}", infura_project_id).as_str()).unwrap(),
         );
-        let client_infura = EvmClient::new("Ethereum", web3);
+        let client_infura = EvmClient::new("Ethereum".to_owned(), web3);
         let result = client_infura.get_logs(None, vec![transfer_topic], 13000000, 13001000).await;
         assert!(result.is_err());
     }
@@ -280,7 +280,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
         let token_id = U256::from_dec_str("10279").unwrap();
@@ -294,7 +294,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         let address = H160::from_str("0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85").unwrap();
         let token_id = U256::from_dec_str("38845564502965131371508063114826058623537470318810020350714825917421388823764").unwrap();
@@ -308,7 +308,7 @@ mod tests {
         let web3 = Web3::new(
             Http::new("https://main-light.eth.linkpool.io").unwrap(),
         );
-        let client = EvmClient::new("Ethereum", web3);
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         // This erc1155 contract is not support erc1155 metadata extension, beacause supportsInterface(0x0e89341c) retruns false,
         // but it has the uri(token_id) method

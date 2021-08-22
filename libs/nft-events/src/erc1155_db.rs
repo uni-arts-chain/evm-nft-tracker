@@ -106,12 +106,10 @@ pub fn add_token_to_db(conn: &Connection, token_id: String, collection_id: usize
 #[cfg(test)]
 mod tests {
     use super::*;
-    use web3::types::{H256, H160, Log, U256};
+    use web3::types::H160;
 
     #[tokio::test]
     async fn test_get_collection_from_db() {
-        std::fs::remove_file("./erc1155_test1.db");
-        
         let conn = Connection::open("./erc1155_test1.db").unwrap();
         create_tables_if_not_exist(&conn).unwrap();
 
@@ -124,13 +122,11 @@ mod tests {
         let result = get_collection_from_db(&conn, &address).unwrap();
         assert_eq!(Some((1, "0x0000000000000000000000000000000000000000".to_string())), result);
 
-        std::fs::remove_file("./erc1155_test1.db");
+        std::fs::remove_file("./erc1155_test1.db").unwrap();
     }
 
     #[tokio::test]
     async fn test_get_token_from_db() {
-        std::fs::remove_file("./erc1155_test2.db");
-
         let conn = Connection::open("./erc1155_test2.db").unwrap();
         create_tables_if_not_exist(&conn).unwrap();
 
@@ -152,6 +148,6 @@ mod tests {
         let token = get_token_from_db(&conn, collection_id, token_id).unwrap();
         assert_eq!(Some((id, token_id.to_owned(), collection_id, token_uri)), token);
 
-        std::fs::remove_file("./erc1155_test2.db");
+        std::fs::remove_file("./erc1155_test2.db").unwrap();
     }
 }
