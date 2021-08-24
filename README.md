@@ -52,6 +52,15 @@ This project contains a library named `nft-events`, which was used to develop th
 $ cargo test
 ```
 
+## Docker
+
+```bash
+$ docker build -t evm-nft-tracker .
+$ docker run -it --rm evm-nft-tracker ethereum-nft-tracker 12994586
+```
+
+`ethereum-nft-tracker` can be replaced by `moonriver-nft-tracker`, `pangolin-nft-tracker` or `polygon-nft-tracker`.
+
 ## Rationale
 
 The [ERC-721](https://eips.ethereum.org/EIPS/eip-721) and [ERC - 1155](https://eips.ethereum.org/EIPS/eip-1155) are Ethereum protocals and are also supported by other projects running on EVM-compatible virtual machines. As these two standards are widely used by NFTs issued on EVM, this project only focuses on NFTs of ERC-721 and ERC-1155.
