@@ -1,3 +1,4 @@
+//! This module is the entry point for tracking ERC1155.
 use crate::{
     Result, Error, EvmClient, erc1155_db, erc1155_evm, erc1155_evm::Erc1155Event
 };
@@ -7,11 +8,17 @@ use tokio::time::sleep;
 
 use rusqlite::Connection;
 
+/// When the ERC1155 event is fetched, the event will be exposed to the caller through this trait.
+/// The caller needs to implement this trait and write the code on how to use the event.
+/// The metadata is also passed along with it.
 #[async_trait]
 pub trait Erc1155EventCallback: Send {
+    /// The callback function
     async fn on_erc1155_event(&mut self, event: Erc1155Event, token_uri: String) -> Result<()>;
 }
 
+/// Entry function for tracking ERC1155. 
+/// If you only need to track ERC1155, you can use this function directly.
 pub async fn track_erc1155_events(evm_client: &EvmClient, db_conn: &Connection, start_from: u64, step: u64, end_block: Option<u64>, callback: &mut dyn Erc1155EventCallback) {
     let mut step = step;
     let mut from = start_from;

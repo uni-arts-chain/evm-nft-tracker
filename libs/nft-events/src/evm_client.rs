@@ -1,3 +1,5 @@
+//! This module contains an EVM client. 
+//! This EVM client provides several methods for accessing the EVM of the host blockchain.
 use crate::Result;
 use web3::{
     transports::http::Http,
@@ -7,13 +9,16 @@ use web3::{
 };
 use array_bytes::hex2array;
 
+/// The EVM client struct
 #[derive(Clone)]
 pub struct EvmClient {
+    /// The blockchain name used for display
     pub chain_name: String,
     web3: Web3<Http>,
 }
 
 impl EvmClient {
+    /// Initialize a new EvmClient instance
     pub fn new(chain_name: String, web3: Web3<Http>) -> EvmClient {
         EvmClient { 
             chain_name,
@@ -23,6 +28,9 @@ impl EvmClient {
 }
 
 impl EvmClient {
+    /// Get EVM `Log` from the blockchain according to the conditions
+    /// If the distance between `from` and `to` is large, it may take a 
+    /// long time to return. In some cases it may end up in error.
     pub async fn get_logs(
         &self,
         contract_address: Option<H160>,
@@ -49,6 +57,7 @@ impl EvmClient {
         Ok(self.web3.eth().logs(filter).await?)
     }
 
+    /// Get the latest block number
     pub async fn get_latest_block_number(&self) -> Result<u64> {
         let eth = self.web3.eth();
         let sync_state = eth.syncing().await?;
@@ -61,6 +70,7 @@ impl EvmClient {
         Ok(latest_block_number)
     }
 
+    /// Check if a contract address is an ERC721 contract
     pub async fn is_erc721(&self, contract_address: H160) -> Result<bool> {
         let contract = Contract::from_json(
             self.web3.eth(),
@@ -71,7 +81,9 @@ impl EvmClient {
         contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await.or(Ok(false))
     }
 
-    /// (name, symbol, token_uri)
+    /// Get the metadata of an ERC721 token
+    /// If the ERC721 contract not support metadata, this function will return Ok(None).
+    /// The returned tuple is (name, symbol, token_uri).
     pub async fn get_erc721_metadata(&self, contract_address: &H160, token_id: &U256) -> Result<Option<(String, String, String)>> {
         let contract = Contract::from_json(
             self.web3.eth(),
@@ -90,6 +102,7 @@ impl EvmClient {
         }
     }
 
+    /// Get the name and symbol of an ERC721 contract
     pub async fn get_erc721_name_symbol(&self, contract_address: &H160) -> Result<Option<(String, String)>> {
         let contract = Contract::from_json(
             self.web3.eth(),
@@ -107,6 +120,7 @@ impl EvmClient {
         }
     }
 
+    /// Get the token_uri of an ERC721 token
     pub async fn get_erc721_token_uri(&self, contract_address: &H160, token_id: &U256) -> Result<Option<String>> {
         let contract = Contract::from_json(
             self.web3.eth(),
@@ -124,6 +138,7 @@ impl EvmClient {
         }
     }
 
+    /// Check if a contract address is an ERC1155 contract
     pub async fn is_erc1155(&self, contract_address: H160) -> Result<bool> {
         let contract = Contract::from_json(
             self.web3.eth(),
@@ -134,6 +149,8 @@ impl EvmClient {
         contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await.or(Ok(false))
     }
 
+    /// Get the uri of an ERC1155 token
+    /// If the ERC1155 contract not support metadata, this function will return an Err
     pub async fn get_erc1155_token_uri(&self, contract_address: &H160, token_id: &U256) -> Result<String> {
         let contract = Contract::from_json(
             self.web3.eth(),

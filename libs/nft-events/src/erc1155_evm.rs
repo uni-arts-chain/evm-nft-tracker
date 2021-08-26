@@ -1,21 +1,33 @@
+//! This module is a library to get ERC1155 transfer events.
 use crate::{
     Result, EvmClient
 };
 use web3::types::{H256, H160, Log, U256, Bytes};
 use array_bytes::hex2bytes_unchecked as bytes;
 
+/// The Erc721 Transfer Event Wrapper
 #[derive(Debug, Clone)]
 pub struct Erc1155Event {
+    /// The block to which this event belongs
     pub block_number: Option<u64>,
+    /// The ERC721 contract address
     pub address: H160,
+    /// The transaction that issued this event
     pub transaction_hash: Option<H256>,
+    /// The address of an account/contract that is approved to make the transfer
     pub operator: H160,
+    /// Transfer from
     pub from: H160,
+    /// Transfer to
     pub to: H160,
+    /// The token type being transferred
     pub token_id: U256,
+    /// Number of the token transferred
     pub amount: U256,
 }
 
+/// Get all erc1155 events between `from` and `to`.
+/// the `from` and `to` blocks are included.
 pub async fn get_erc1155_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Erc1155Event>> {
     let transfer_single_topic = H256::from_slice(&bytes("0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62"));
     let transfer_batch_topic = H256::from_slice(&bytes("0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb"));

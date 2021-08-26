@@ -1,3 +1,4 @@
+//! This module is the entry point for tracking ERC721.
 use crate::{
     Result, Error, EvmClient, erc721_db, erc721_evm, erc721_evm::Erc721Event
 };
@@ -7,11 +8,17 @@ use tokio::time::sleep;
 
 use rusqlite::Connection;
 
+/// When the ERC721 event is fetched, the event will be exposed to the caller through this trait.
+/// The caller needs to implement this trait and write the code on how to use the event.
+/// The metadata is also passed along with it.
 #[async_trait]
 pub trait Erc721EventCallback: Send {
+    /// The callback function
     async fn on_erc721_event(&mut self, event: Erc721Event, name: Option<String>, symbol: Option<String>, token_uri: Option<String>) -> Result<()>;
 }
 
+/// Entry function for tracking ERC721. 
+/// If you only need to track ERC721, you can use this function directly.
 pub async fn track_erc721_events(evm_client: &EvmClient, db_conn: &Connection, start_from: u64, step: u64, end_block: Option<u64>, callback: &mut dyn Erc721EventCallback) {
     let mut step = step;
     let mut from = start_from;

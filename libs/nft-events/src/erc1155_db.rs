@@ -1,9 +1,11 @@
+//! This module defines several functions to access ERC1155 metadata in the database.
 use crate::Result;
 
 use rusqlite::{
     Connection, params
 };
 
+/// This function is used to create the tables used to store the ERC1155 metadatas
 pub fn create_tables_if_not_exist(conn: &Connection) -> Result<()> {
     conn.execute(
         "create table if not exists erc1155_collections (
@@ -25,7 +27,7 @@ pub fn create_tables_if_not_exist(conn: &Connection) -> Result<()> {
     Ok(()) 
 }
 
-// id, address
+/// id, address
 pub fn get_collection_from_db(conn: &Connection, address: &str) -> Result<Option<(usize, String)>> {
     let sql = format!("SELECT * from erc1155_collections where address='{}'", address);
     let mut stmt = conn.prepare(
@@ -50,6 +52,9 @@ pub fn get_collection_from_db(conn: &Connection, address: &str) -> Result<Option
     }
 }
 
+/// Save ERC1155 contract to database.
+/// This is just a placeholder for other information that may be stored in the future.
+/// It returns the database id.
 pub fn add_collection_to_db(conn: &Connection, address: String) -> Result<usize> {
     conn.execute(
         "INSERT INTO erc1155_collections (address) values (?1)",
@@ -59,7 +64,9 @@ pub fn add_collection_to_db(conn: &Connection, address: String) -> Result<usize>
     Ok(id)
 }
 
-// token_id here is the token_id in contract
+/// Get the token_uri of a ERC1155 token from database.
+/// token_id here is the `token_id` in contract.
+/// The returned tuple is (_, contract_address, _, uri)
 pub fn get_token_from_db(conn: &Connection, collection_id: usize, token_id: &str) -> Result<Option<(usize, String, usize, Option<String>)>> {
     let sql = format!("SELECT * from erc1155_tokens where collection_id={} and token_id='{}'", collection_id, token_id);
     let mut stmt = conn.prepare(
@@ -86,6 +93,9 @@ pub fn get_token_from_db(conn: &Connection, collection_id: usize, token_id: &str
     }
 }
 
+/// Save the token uri to database.
+/// token_id here is the `token_id` in contract.
+/// It returns the database id.
 pub fn add_token_to_db(conn: &Connection, token_id: String, collection_id: usize, token_uri: Option<String>) -> Result<usize> {
     if token_uri.is_some() {
         conn.execute(

@@ -1,21 +1,28 @@
+//! This module is a library to get ERC721 transfer events.
 use crate::{
     Result, EvmClient
 };
 use web3::types::{H256, H160, Log, U256};
 use array_bytes::hex2bytes_unchecked as bytes;
 
+/// The Erc721 Transfer Event Wrapper
 #[derive(Debug, Clone)]
 pub struct Erc721Event {
+    /// The block to which this event belongs
     pub block_number: Option<u64>,
+    /// The ERC721 contract address
     pub address: H160,
+    /// The transaction that issued this event
     pub transaction_hash: Option<H256>,
+    /// Transfer from
     pub from: H160,
+    /// Transfer to
     pub to: H160,
+    /// Transferred ERC721 token
     pub token_id: U256,
 }
 
-
-/// Get all erc721 events between `from` and `to`
+/// Get all erc721 events between `from` and `to`.
 /// the `from` and `to` blocks are included.
 pub async fn get_erc721_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Erc721Event>> {
     let transfer_topic = H256::from_slice(&bytes("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
