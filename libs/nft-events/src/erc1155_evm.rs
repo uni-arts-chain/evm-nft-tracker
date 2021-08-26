@@ -43,7 +43,7 @@ pub async fn get_erc1155_events(
     let mut events = vec![];
 
     for log in logs {
-        if client.is_erc1155(log.address).await? {
+        if client.is_visual_erc1155(log.address).await? {
             if log.topics[0] == transfer_single_topic {
                 let token_id = U256::from_big_endian(&log.data.0[0..32]);
                 let amount = U256::from_big_endian(&log.data.0[32..64]);

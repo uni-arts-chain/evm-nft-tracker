@@ -69,7 +69,7 @@ impl EvmClient {
         Ok(latest_block_number)
     }
 
-    /// Check if a contract address is an visual ERC721 contract
+    /// Check if a contract address is a visual ERC721 contract
     pub async fn is_visual_erc721(&self, contract_address: H160) -> Result<bool> {
 
         let contract = Contract::from_json(
@@ -230,15 +230,16 @@ impl EvmClient {
         }
     }
 
-    /// Check if a contract address is an ERC1155 contract
-    pub async fn is_erc1155(&self, contract_address: H160) -> Result<bool> {
+    /// Check if a contract address is a visual ERC1155 contract
+    pub async fn is_visual_erc1155(&self, contract_address: H160) -> Result<bool> {
         let contract = Contract::from_json(
             self.web3.eth(),
             contract_address,
             include_bytes!("./contracts/erc1155.json"),
         )?;
+
         let interface_id: [u8; 4] = hex2array::<_, 4>("0xd9b67a26").unwrap();
-        contract
+        let is_erc1155: web3::contract::Result<bool> = contract
             .query(
                 "supportsInterface",
                 (interface_id,),
@@ -246,8 +247,31 @@ impl EvmClient {
                 Options::default(),
                 None,
             )
-            .await
-            .or(Ok(false))
+            .await;
+
+        match is_erc1155 {
+            Ok(erc1155) => {
+                if erc1155 {
+                    let interface_id: [u8; 4] = hex2array::<_, 4>("0x0e89341c").unwrap();
+                    let supports_metadata: web3::contract::Result<bool> = contract
+                        .query(
+                            "supportsInterface",
+                            (interface_id,),
+                            None,
+                            Options::default(),
+                            None,
+                        )
+                        .await;
+                    match supports_metadata {
+                        Ok(supports) => Ok(supports),
+                        Err(_) => Ok(false),
+                    }
+                } else {
+                    Ok(false)
+                }
+            },
+            Err(_) => Ok(false),
+        }
     }
 
     /// Get the uri of an ERC1155 token
@@ -321,25 +345,34 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_is_erc1155() {
+    async fn test_is_visual_erc1155() {
         let web3 = Web3::new(Http::new("https://main-light.eth.linkpool.io").unwrap());
         let client = EvmClient::new("Ethereum".to_owned(), web3);
 
         // ERC1155
-        let address = H160::from_str("0x495f947276749ce646f68ac8c248420045cb7b5e").unwrap();
-        assert_eq!(true, client.is_erc1155(address).await.unwrap());
+        let address = H160::from_str("0x797a48c46be32aafcedcfd3d8992493d8a1f256b").unwrap();
+        assert_eq!(true, client.is_visual_erc1155(address).await.unwrap());
 
         // Not ERC155, support ERC165
         let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
-        assert_eq!(false, client.is_erc1155(address).await.unwrap());
+        assert_eq!(false, client.is_visual_erc1155(address).await.unwrap());
 
         // Not ERC1155, not support ERC165
         let address = H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
-        assert_eq!(false, client.is_erc1155(address).await.unwrap());
+        assert_eq!(false, client.is_visual_erc1155(address).await.unwrap());
 
         // Not contract address
         let address = H160::from_str("0x0000000000000000000000000000000000000000").unwrap();
-        assert_eq!(false, client.is_erc1155(address).await.unwrap());
+        assert_eq!(false, client.is_visual_erc1155(address).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_non_visual_erc1155() {
+        let web3 = Web3::new(Http::new("https://pangolin-rpc.darwinia.network").unwrap());
+        let client = EvmClient::new("Pangolin".to_owned(), web3);
+        // A non-visual ERC1155
+        let address = H160::from_str("0x1Cc1D7F55D5540041f869cF94c1294A0D95992C0").unwrap();
+        assert_eq!(false, client.is_visual_erc1155(address).await.unwrap());
     }
 
     #[tokio::test]
