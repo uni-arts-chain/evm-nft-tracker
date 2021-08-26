@@ -69,15 +69,17 @@ impl EvmClient {
         Ok(latest_block_number)
     }
 
-    /// Check if a contract address is an ERC721 contract
-    pub async fn is_erc721(&self, contract_address: H160) -> Result<bool> {
+    /// Check if a contract address is an visual ERC721 contract
+    pub async fn is_visual_erc721(&self, contract_address: H160) -> Result<bool> {
+
         let contract = Contract::from_json(
             self.web3.eth(),
             contract_address,
             include_bytes!("./contracts/erc721.json"),
         )?;
+
         let interface_id: [u8; 4] = hex2array::<_, 4>("0x80ac58cd").unwrap();
-        contract
+        let is_erc721: web3::contract::Result<bool> = contract
             .query(
                 "supportsInterface",
                 (interface_id,),
@@ -85,8 +87,31 @@ impl EvmClient {
                 Options::default(),
                 None,
             )
-            .await
-            .or(Ok(false))
+            .await;
+
+        match is_erc721 {
+            Ok(erc721) => {
+                if erc721 {
+                    let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
+                    let supports_metadata: web3::contract::Result<bool> = contract
+                        .query(
+                            "supportsInterface",
+                            (interface_id,),
+                            None,
+                            Options::default(),
+                            None,
+                        )
+                        .await;
+                    match supports_metadata {
+                        Ok(supports) => Ok(supports),
+                        Err(_) => Ok(false),
+                    }
+                } else {
+                    Ok(false)
+                }
+            },
+            Err(_) => Ok(false),
+        }
     }
 
     /// Get the metadata of an ERC721 token
@@ -269,21 +294,30 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_is_erc721() {
+    async fn test_is_visual_erc721() {
         let web3 = Web3::new(Http::new("https://main-light.eth.linkpool.io").unwrap());
         let client = EvmClient::new("Ethereum".to_owned(), web3);
 
-        // ERC721
+        // A visual ERC721
         let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
-        assert_eq!(true, client.is_erc721(address).await.unwrap());
+        assert_eq!(true, client.is_visual_erc721(address).await.unwrap());
 
         // Not ERC721
         let address = H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
-        assert_eq!(false, client.is_erc721(address).await.unwrap());
+        assert_eq!(false, client.is_visual_erc721(address).await.unwrap());
 
         // Not contract address
         let address = H160::from_str("0x0000000000000000000000000000000000000000").unwrap();
-        assert_eq!(false, client.is_erc721(address).await.unwrap());
+        assert_eq!(false, client.is_visual_erc721(address).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_non_visual_erc721() {
+        let web3 = Web3::new(Http::new("https://pangolin-rpc.darwinia.network").unwrap());
+        let client = EvmClient::new("Pangolin".to_owned(), web3);
+        // A non-visual ERC721
+        let address = H160::from_str("0x2b75d135E605D9aBABb9a6F7bFad31F7d003F44e").unwrap();
+        assert_eq!(false, client.is_visual_erc721(address).await.unwrap());
     }
 
     #[tokio::test]

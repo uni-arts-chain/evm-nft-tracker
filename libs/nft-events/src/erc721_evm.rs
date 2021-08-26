@@ -31,7 +31,7 @@ pub async fn get_erc721_events(client: &EvmClient, from: u64, to: u64) -> Result
         .await?;
     let mut events = vec![];
     for log in logs {
-        if log.topics.len() == 4 && client.is_erc721(log.address).await? {
+        if log.topics.len() == 4 && client.is_visual_erc721(log.address).await? {
             events.push(build_event(&log));
         }
     }

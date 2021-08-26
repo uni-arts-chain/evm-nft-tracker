@@ -16,9 +16,9 @@ impl Erc721EventCallback for PangolinErc721EventCallback {
     async fn on_erc721_event(
         &mut self,
         event: Erc721Event,
-        name: Option<String>,
-        symbol: Option<String>,
-        token_uri: Option<String>,
+        name: String,
+        symbol: String,
+        token_uri: String,
     ) -> nft_events::Result<()> {
         println!("------------------------------------------------------------------------------------------");
         println!("event: {:?}", event);

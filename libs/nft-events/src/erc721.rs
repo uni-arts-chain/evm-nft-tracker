@@ -15,9 +15,9 @@ pub trait Erc721EventCallback: Send {
     async fn on_erc721_event(
         &mut self,
         event: Erc721Event,
-        name: Option<String>,
-        symbol: Option<String>,
-        token_uri: Option<String>,
+        name: String,
+        symbol: String,
+        token_uri: String,
     ) -> Result<()>;
 }
 
@@ -67,16 +67,18 @@ pub async fn track_erc721_events(
                                 // ******************************************************
                                 match get_metadata(evm_client, db_conn, &event).await {
                                     Ok(metadata) => {
-                                        if let Err(err) = callback
-                                            .on_erc721_event(
-                                                event.clone(),
-                                                metadata.0,
-                                                metadata.1,
-                                                metadata.2,
-                                            )
-                                            .await
-                                        {
-                                            error!("Encountered an error when process ERC721 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
+                                        if let Some((name, symbol, token_uri)) = metadata {
+                                            if let Err(err) = callback
+                                                .on_erc721_event(
+                                                    event.clone(),
+                                                    name,
+                                                    symbol,
+                                                    token_uri,
+                                                )
+                                                .await
+                                            {
+                                                error!("Encountered an error when process ERC721 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
+                                            }
                                         }
                                     }
                                     Err(err) => {
@@ -127,13 +129,18 @@ async fn get_metadata(
     evm_client: &EvmClient,
     db_conn: &Connection,
     event: &Erc721Event,
-) -> Result<(Option<String>, Option<String>, Option<String>)> {
+) -> Result<Option<(String, String, String)>> {
     save_metadata_to_db_if_not_exists(evm_client, db_conn, &event.address, &event.token_id).await?;
     let collection =
         erc721_db::get_collection_from_db(db_conn, &format!("{:?}", event.address))?.unwrap();
     let token =
         erc721_db::get_token_from_db(db_conn, collection.0, &event.token_id.to_string())?.unwrap();
-    Ok((collection.2, collection.3, token.3))
+
+    if collection.2.is_some() && collection.3.is_some() && token.3.is_some() {
+        Ok(Some((collection.2.unwrap(), collection.3.unwrap(), token.3.unwrap())))
+    } else {
+        Ok(None)
+    }
 }
 
 async fn save_metadata_to_db_if_not_exists(
@@ -181,9 +188,9 @@ mod tests {
         async fn on_erc721_event(
             &mut self,
             event: Erc721Event,
-            _name: Option<String>,
-            _symbol: Option<String>,
-            _token_uri: Option<String>,
+            _name: String,
+            _symbol: String,
+            _token_uri: String,
         ) -> Result<()> {
             self.events.push(event);
             Ok(())
