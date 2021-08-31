@@ -17,6 +17,7 @@ pub trait Erc721EventCallback: Send {
         event: Erc721Event,
         name: String,
         symbol: String,
+        total_supply: Option<u128>,
         token_uri: String,
     ) -> Result<()>;
 }
@@ -64,28 +65,9 @@ pub async fn track_erc721_events(
                             );
                             for event in events {
                                 // PROCESS AN EVENT
-                                // ******************************************************
-                                match get_metadata(evm_client, db_conn, &event).await {
-                                    Ok(metadata) => {
-                                        if let Some((name, symbol, token_uri)) = metadata {
-                                            if let Err(err) = callback
-                                                .on_erc721_event(
-                                                    event.clone(),
-                                                    name,
-                                                    symbol,
-                                                    token_uri,
-                                                )
-                                                .await
-                                            {
-                                                error!("Encountered an error when process ERC721 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
-                                            }
-                                        }
-                                    }
-                                    Err(err) => {
-                                        error!("Encountered an error when get metadata for ERC721 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
-                                    }
+                                if let Err(err) = process_event(evm_client, db_conn, event.clone(), callback).await {
+                                    error!("Encountered an error when process ERC721 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
                                 }
-                                // ******************************************************
                             }
 
                             from = to + 1;
@@ -123,6 +105,26 @@ pub async fn track_erc721_events(
             }
         }
     }
+}
+
+async fn process_event(evm_client: &EvmClient, db_conn: &Connection, event: Erc721Event, callback: &mut dyn Erc721EventCallback) -> Result<()> {
+    let metadata = get_metadata(evm_client, db_conn, &event).await?;
+    if let Some((name, symbol, token_uri)) = metadata {
+        // get total supply
+        let total_supply = evm_client.get_erc721_total_supply(&event.address).await?;
+
+        // callback
+        callback.on_erc721_event(
+            event,
+            name,
+            symbol,
+            total_supply,
+            token_uri,
+        )
+        .await?;
+    }
+
+    Ok(())
 }
 
 async fn get_metadata(

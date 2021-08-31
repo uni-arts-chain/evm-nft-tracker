@@ -230,6 +230,40 @@ impl EvmClient {
         }
     }
 
+    /// Get the total_supply of an ERC721 contract 
+    pub async fn get_erc721_total_supply(&self, contract_address: &H160) -> Result<Option<u128>> {
+        let contract = Contract::from_json(
+            self.web3.eth(),
+            contract_address.clone(),
+            include_bytes!("./contracts/erc721.json"),
+        )?;
+
+        let interface_id: [u8; 4] = hex2array::<_, 4>("0x780e9d63").unwrap();
+        let supports_enumerable: bool = contract
+            .query(
+                "supportsInterface",
+                (interface_id,),
+                None,
+                Options::default(),
+                None,
+            )
+            .await?;
+        if supports_enumerable {
+            let total_supply: U256 = contract
+                .query(
+                    "totalSupply",
+                    (),
+                    None,
+                    Options::default(),
+                    None,
+                )
+                .await?;
+            Ok(Some(total_supply.as_u128()))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Check if a contract address is a visual ERC1155 contract
     pub async fn is_visual_erc1155(&self, contract_address: H160) -> Result<bool> {
         let contract = Contract::from_json(
@@ -464,6 +498,20 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!("https://api.monsterblocks.io/metadata/10279", token_uri);
+    }
+
+    #[tokio::test]
+    async fn test_get_erc721_total_supply() {
+        let web3 = Web3::new(Http::new("https://main-light.eth.linkpool.io").unwrap());
+        let client = EvmClient::new("Ethereum".to_owned(), web3);
+
+        let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
+        let total_supply = client
+            .get_erc721_total_supply(&address)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(9138, total_supply);
     }
 
     #[tokio::test]
