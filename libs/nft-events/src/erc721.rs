@@ -192,6 +192,7 @@ mod tests {
             event: Erc721Event,
             _name: String,
             _symbol: String,
+            _total_supply: Option<u128>,
             _token_uri: String,
         ) -> Result<()> {
             self.events.push(event);
