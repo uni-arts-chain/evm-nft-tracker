@@ -1,7 +1,7 @@
 //! This module is a library to get ERC1155 transfer events.
-use crate::{EvmClient, Result, erc1155_db::add_collection_to_db};
+use crate::{EvmClient, Result};
 use array_bytes::hex2bytes_unchecked as bytes;
-use web3::{ethabi::token, types::{Bytes, Log, H160, H256, U256}};
+use web3::types::{Bytes, Log, H160, H256, U256};
 
 /// The Erc721 Transfer Event Wrapper
 #[derive(Debug, Clone)]
