@@ -192,7 +192,7 @@ mod tests {
         //
         let mut callback = EthereumErc1155EventCallback { events: vec![] };
         track_erc1155_events(&client, &conn, 13015344, 1, Some(13015346), &mut callback).await;
-        assert_eq!(14, callback.events.len());
+        assert_eq!(5, callback.events.len());
 
         std::fs::remove_file("./test6.db").unwrap();
     }

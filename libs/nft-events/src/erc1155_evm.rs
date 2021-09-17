@@ -70,11 +70,11 @@ async fn build_event(client: &EvmClient, log: &Log) -> Result<Erc1155Event> {
     let operator = H160::from(log.topics[1]);
     let from = H160::from(log.topics[2]);
     let to = H160::from(log.topics[3]);
-    let balances = client.get_erc1155_balances(&address, &vec![from, to], &vec![token_id, token_id], block_number).await?;
-    // let balance_of_from = U256::zero();// balances[0];
-    // let balance_of_to = U256::zero();// balances[1];
-    let balance_of_from = balances[0];
-    let balance_of_to = balances[1];
+    // let balances = client.get_erc1155_balances(&address, &vec![from, to], &vec![token_id, token_id], block_number).await?;
+    let balance_of_from = U256::zero();
+    let balance_of_to = U256::zero();
+    // let balance_of_from = balances[0];
+    // let balance_of_to = balances[1];
 
     Ok(
         Erc1155Event {
@@ -120,17 +120,17 @@ async fn build_events(client: &EvmClient, log: &Log) -> Result<Vec<Erc1155Event>
         owner_list.push(to);
         token_id_list.push(token_id);
     }
-    let balances = client.get_erc1155_balances(&address, &owner_list, &token_id_list, block_number).await?;
+    // let balances = client.get_erc1155_balances(&address, &owner_list, &token_id_list, block_number).await?;
 
     //
     let mut events = vec![];
     for i in 0..token_ids.len() {
         let token_id = token_ids[i];
         let amount = amounts[i];
-        // let balance_of_from = U256::zero();// balances[i];
-        // let balance_of_to = U256::zero();// balances[i+3];
-        let balance_of_from = balances[i];
-        let balance_of_to = balances[i+3];
+        let balance_of_from = U256::zero();
+        let balance_of_to = U256::zero();
+        // let balance_of_from = balances[i];
+        // let balance_of_to = balances[i+3];
         events.push(Erc1155Event {
             block_number,
             address,

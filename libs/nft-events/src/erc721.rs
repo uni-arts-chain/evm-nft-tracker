@@ -111,7 +111,8 @@ async fn process_event(evm_client: &EvmClient, db_conn: &Connection, event: Erc7
     let metadata = get_metadata(evm_client, db_conn, &event).await?;
     if let Some((name, symbol, token_uri)) = metadata {
         // get total supply
-        let total_supply = evm_client.get_erc721_total_supply(&event.address).await?;
+        // let total_supply = evm_client.get_erc721_total_supply(&event.address, event.block_number).await?;
+        let total_supply = Some(0);
 
         // callback
         callback.on_erc721_event(
