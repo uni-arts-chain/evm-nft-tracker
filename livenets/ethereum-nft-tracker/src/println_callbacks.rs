@@ -28,12 +28,10 @@ impl Erc1155EventCallback for EthereumErc1155EventCallback {
         &mut self,
         event: Erc1155Event,
         token_uri: String,
-    ) -> nft_events::Result<()> {
+    ) {
         println!("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
         println!("event: {:?}", event);
         println!("token_uri: {:?}", token_uri);
-
-        Ok(())
     }
 }
 

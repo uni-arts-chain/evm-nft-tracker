@@ -5,7 +5,7 @@ use array_bytes::hex2array;
 use web3::{
     contract::{Contract, Options},
     transports::http::Http,
-    types::{BlockId, BlockNumber, FilterBuilder, Log, SyncState, H160, H256, U256, U64},
+    types::{BlockNumber, FilterBuilder, Log, SyncState, H160, H256, U256, U64},
     Web3,
 };
 
@@ -69,6 +69,9 @@ impl EvmClient {
         Ok(latest_block_number)
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    /// ERC721
+    ///////////////////////////////////////////////////////////////////////////
     /// Check if a contract address is an ERC721 contract
     pub async fn is_erc721(&self, contract_address: H160) -> Result<bool> {
         let contract = Contract::from_json(
@@ -171,8 +174,11 @@ impl EvmClient {
         Ok(token_uri)
     }
 
-    /// Check if a contract address is a visual ERC1155 contract
-    pub async fn is_visual_erc1155(&self, contract_address: H160) -> Result<bool> {
+    ///////////////////////////////////////////////////////////////////////////
+    /// ERC1155
+    ///////////////////////////////////////////////////////////////////////////
+    /// Check if a contract address is an ERC1155 contract
+    pub async fn is_erc1155(&self, contract_address: H160) -> Result<bool> {
         let contract = Contract::from_json(
             self.web3.eth(),
             contract_address,
@@ -180,7 +186,9 @@ impl EvmClient {
         )?;
 
         let interface_id: [u8; 4] = hex2array::<_, 4>("0xd9b67a26").unwrap();
-        let is_erc1155: web3::contract::Result<bool> = contract
+
+        Ok(
+            contract
             .query(
                 "supportsInterface",
                 (interface_id,),
@@ -188,31 +196,31 @@ impl EvmClient {
                 Options::default(),
                 None,
             )
-            .await;
+            .await?
+        )
+    }
 
-        match is_erc1155 {
-            Ok(erc1155) => {
-                if erc1155 {
-                    let interface_id: [u8; 4] = hex2array::<_, 4>("0x0e89341c").unwrap();
-                    let supports_metadata: web3::contract::Result<bool> = contract
-                        .query(
-                            "supportsInterface",
-                            (interface_id,),
-                            None,
-                            Options::default(),
-                            None,
-                        )
-                        .await;
-                    match supports_metadata {
-                        Ok(supports) => Ok(supports),
-                        Err(_) => Ok(false),
-                    }
-                } else {
-                    Ok(false)
-                }
-            },
-            Err(_) => Ok(false),
-        }
+    /// Check if a contract address supports ERC1155 metadata
+    pub async fn supports_erc1155_metadata(&self, contract_address: H160) -> Result<bool> {
+        let contract = Contract::from_json(
+            self.web3.eth(),
+            contract_address,
+            include_bytes!("./contracts/erc1155.json"),
+        )?;
+
+        let interface_id: [u8; 4] = hex2array::<_, 4>("0x0e89341c").unwrap();
+
+        Ok(
+            contract
+            .query(
+                "supportsInterface",
+                (interface_id,),
+                None,
+                Options::default(),
+                None,
+            )
+            .await?
+        )
     }
 
     /// Get the uri of an ERC1155 token
@@ -229,57 +237,17 @@ impl EvmClient {
         )?;
 
         let token_uri: String = contract
-            .query("uri", (token_id.clone(),), None, Options::default(), None)
+            .query(
+                "uri",
+                (token_id.clone(),),
+                None,
+                Options::default(),
+                None,
+            )
             .await?;
         Ok(token_uri)
-
-        // match contract.query("uri", (token_id.clone(),), None, Options::default(), None).await {
-        //     Ok(token_uri@String) => Ok(Some(token_uri)),
-        //     Err(err) => {
-
-        //     }
-        // }
-
-        // let interface_id: [u8; 4] = hex2array::<_, 4>("0x0e89341c").unwrap();
-        // let supports_metadata: bool = contract.query("supportsInterface", (interface_id,), None, Options::default(), None).await?;
-        // if supports_metadata {
-        //     let token_uri: String = contract.query("uri", (token_id.clone(),), None, Options::default(), None).await?;
-        //     Ok(Some(token_uri))
-        // } else {
-        //     Ok(None)
-        // }
     }
 
-    /// Get the balance of an account's token
-    pub async fn get_erc1155_balance(&self, contract_address: &H160, owner: &H160, token_id: &U256) -> Result<U256> {
-        let contract = Contract::from_json(
-            self.web3.eth(),
-            contract_address.clone(),
-            include_bytes!("./contracts/erc1155.json"),
-        )?;
-
-        let balance: U256 = contract
-            .query("balanceOf", (owner.clone(), token_id.clone(),), None, Options::default(), None)
-            .await?;
-        Ok(balance)
-    }
-
-    /// Get the balance of multiple account/token pairs
-    pub async fn get_erc1155_balances(&self, contract_address: &H160, owners: &Vec<H160>, token_ids: &Vec<U256>, block_number: Option<u64>) -> Result<Vec<U256>> {
-        let contract = Contract::from_json(
-            self.web3.eth(),
-            contract_address.clone(),
-            include_bytes!("./contracts/erc1155.json"),
-        )?;
-
-        let block_id = block_number.map(|b| {
-            BlockId::from(U64::from(b))
-        });
-        let balances: Vec<U256> = contract
-            .query("balanceOfBatch", (owners.clone(), token_ids.clone(),), None, Options::default(), block_id)
-            .await?;
-        Ok(balances)
-    }
 }
 
 #[cfg(test)]
@@ -486,26 +454,6 @@ mod tests {
             "ipfs://ipfs/QmXTSZ7ag9yzQFkvUrZ5qr7KuCUtW2jeDiYJrJ8s7TpSNb",
             token_uri
         );
-    }
-
-    #[tokio::test]
-    async fn test_get_erc1155_balances() {
-        let web3 = Web3::new(Http::new("https://main-light.eth.linkpool.io").unwrap());
-        let client = EvmClient::new("Ethereum".to_owned(), web3);
-
-        // This erc1155 contract is not support erc1155 metadata extension, beacause supportsInterface(0x0e89341c) retruns false,
-        // but it has the uri(token_id) method
-        let address = H160::from_str("0x76be3b62873462d2142405439777e971754e8e77").unwrap();
-        let owner = H160::from_str("0x8b03428986101e8cc436eae8bf126aa81ef355b7").unwrap();
-        let owner_2 = H160::from_str("0x18ffbcdbfc165a9d6fbc4af23eb2b81942896335").unwrap();
-        let token_id = U256::from_dec_str("10106").unwrap();
-        let token_id_2 = U256::from_dec_str("10177").unwrap();
-        let balances = client
-            // .get_erc1155_balances(&address, &vec![owner], &vec![token_id], Some(13136601))
-            .get_erc1155_balances(&address, &vec![owner, owner_2], &vec![token_id, token_id_2], None)
-            .await
-            .unwrap();
-        println!("{:?}", balances);
     }
 
 }

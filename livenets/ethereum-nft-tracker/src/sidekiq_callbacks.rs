@@ -30,14 +30,12 @@ impl Erc1155EventCallback for EthereumErc1155EventCallback {
         &mut self,
         event: Erc1155Event,
         token_uri: String,
-    ) -> nft_events::Result<()> {
+    ) {
         sidekiq_helper::send_erc1155(
             "Ethereum".to_string(),
             event,
             token_uri,
         );
-
-        Ok(())
     }
 }
 

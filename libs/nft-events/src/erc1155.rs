@@ -1,10 +1,7 @@
 //! This module is the entry point for tracking ERC1155.
-use crate::{erc1155_db, erc1155_evm, erc1155_evm::Erc1155Event, Error, EvmClient, Result};
+use crate::{erc1155_evm, erc1155_evm::Erc1155Event, EvmClient};
 use std::time::Duration;
 use tokio::time::sleep;
-use web3::types::{H160, U256};
-
-use rusqlite::Connection;
 
 /// When the ERC1155 event is fetched, the event will be exposed to the caller through this trait.
 /// The caller needs to implement this trait and write the code on how to use the event.
@@ -12,20 +9,18 @@ use rusqlite::Connection;
 #[async_trait]
 pub trait Erc1155EventCallback: Send {
     /// The callback function
-    async fn on_erc1155_event(&mut self, event: Erc1155Event, token_uri: String) -> Result<()>;
+    async fn on_erc1155_event(&mut self, event: Erc1155Event, token_uri: String);
 }
 
 /// Entry function for tracking ERC1155.
 /// If you only need to track ERC1155, you can use this function directly.
 pub async fn track_erc1155_events(
     evm_client: &EvmClient,
-    db_conn: &Connection,
     start_from: u64,
     step: u64,
     end_block: Option<u64>,
     callback: &mut dyn Erc1155EventCallback,
 ) {
-    let mut step = step;
     let mut from = start_from;
     loop {
         match evm_client.get_latest_block_number().await {
@@ -38,126 +33,50 @@ pub async fn track_erc1155_events(
                 }
 
                 if to >= from {
-                    debug!(
-                        "Scan for {} ERC1155 events in block range of {} - {}({})",
-                        evm_client.chain_name,
-                        from,
-                        to,
-                        to - from + 1
-                    );
+                    debug!("Scan for ERC1155 events in {} - {}({})", from, to, to - from + 1);
                     match erc1155_evm::get_erc1155_events(&evm_client, from, to).await {
                         Ok(events) => {
-                            info!(
-                                "{} {} ERC1155 events were scanned in block range of {} - {}({})",
-                                events.len(),
-                                evm_client.chain_name,
-                                from,
-                                to,
-                                to - from + 1
-                            );
+
+                            info!("{} ERC1155 events were scanned in {} - {}({})", events.len(), from, to, to - from + 1);
+
                             for event in events {
-                                // PROCESS AN EVENT
-                                // ******************************************************
-                                match get_token_uri(evm_client, db_conn, &event).await {
-                                    Ok(token_uri) => {
-                                        if let Err(err) = callback
-                                            .on_erc1155_event(event.clone(), token_uri)
-                                            .await
-                                        {
-                                            error!("Encountered an error when process ERC1155 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
-                                        }
-                                    }
-                                    Err(err) => {
-                                        error!("Encountered an error when get metadata for ERC1155 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
-                                    }
-                                }
-                                // ******************************************************
+                                process_event(evm_client, event.clone(), callback).await;
                             }
 
                             from = to + 1;
 
-                            sleep(Duration::from_secs(5)).await;
                         }
-                        Err(err) => match err {
-                            Error::Web3Error(web3::Error::Rpc(e)) => {
-                                if e.message == "query returned more than 10000 results" {
-                                    error!("{}", e.message);
-                                    step = std::cmp::max(step / 2, 1);
-                                } else {
-                                    error!("Encountered an error when get ERC1155 events from {}: {:?}, wait for 30 seconds.", evm_client.chain_name, e);
-                                    sleep(Duration::from_secs(30)).await;
-                                }
-                            }
-                            _ => {
-                                error!("Encountered an error when get ERC1155 events from {}: {:?}, wait for 30 seconds.", evm_client.chain_name, err);
-                                sleep(Duration::from_secs(30)).await;
-                            }
+                        Err(err) => {
+                            error!("Encountered an error when get ERC1155 events: {:?}, wait for 30 seconds.", err);
+                            sleep(Duration::from_secs(30)).await;
                         },
                     }
                 } else {
-                    debug!(
-                        "Track {} ERC1155 events too fast, wait for 30 seconds.",
-                        evm_client.chain_name
-                    );
+                    debug!("Track ERC1155 events too fast, wait for 30 seconds.");
                     sleep(Duration::from_secs(30)).await;
                 }
             }
             Err(err) => {
-                error!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", evm_client.chain_name, err);
-                sleep(Duration::from_secs(30)).await;
+                error!("Encountered an error when get latest_block_number: {:?}, wait for 30 seconds.", err);
             }
         }
     }
 }
 
+async fn process_event(evm_client: &EvmClient, event: Erc1155Event, callback: &mut dyn Erc1155EventCallback) {
+    let token_uri = get_token_uri(evm_client, &event).await;
+
+    // callback
+    callback.on_erc1155_event(event, token_uri).await
+}
+
 async fn get_token_uri(
     evm_client: &EvmClient,
-    db_conn: &Connection,
     event: &Erc1155Event,
-) -> Result<String> {
-    save_metadata_to_db_if_not_exists(evm_client, db_conn, &event.address, &event.token_id).await?;
-    let collection =
-        erc1155_db::get_collection_from_db(db_conn, &format!("{:?}", event.address))?.unwrap();
-    let token =
-        erc1155_db::get_token_from_db(db_conn, collection.0, &event.token_id.to_string())?.unwrap();
-    Ok(token.3.unwrap())
+) -> String {
+    let token_uri = evm_client.get_erc1155_token_uri(&event.address, &event.token_id).await.unwrap_or("Unknown".to_owned());
+    token_uri
 }
-
-async fn save_metadata_to_db_if_not_exists(
-    evm_client: &EvmClient,
-    db_conn: &Connection,
-    address: &H160,
-    token_id: &U256,
-) -> Result<()> {
-    let address_string = format!("{:?}", address);
-    let collection_id =
-        if let Some(collection) = erc1155_db::get_collection_from_db(db_conn, &address_string)? {
-            collection.0
-        } else {
-            erc1155_db::add_collection_to_db(db_conn, address_string.clone())?
-        };
-
-    let token = erc1155_db::get_token_from_db(db_conn, collection_id, &token_id.to_string())?;
-    if token.is_none() {
-        let token_uri = evm_client.get_erc1155_token_uri(address, token_id).await?;
-        erc1155_db::add_token_to_db(
-            db_conn,
-            token_id.to_string(),
-            collection_id,
-            Some(token_uri),
-        )?;
-        // if remove_whitespace(&token_uri).as_str() == "" {
-        //     return Err(Error::Other("Blank token uri".to_owned()));
-        // } else {
-        //     erc1155_db::add_token_to_db(db_conn, token_id.to_string(), collection_id, Some(token_uri))?;
-        // }
-    }
-    Ok(())
-}
-
-// fn remove_whitespace(s: &str) -> String {
-//     s.chars().filter(|c| !c.is_whitespace()).collect()
-// }
 
 #[cfg(test)]
 mod tests {

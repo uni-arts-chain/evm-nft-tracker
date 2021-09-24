@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
         "RUST_LOG",
         r#"
         ethereum_nft_tracker=info,
-		nft_events=debug,
+		nft_events=info,
         "#,
     );
     env_logger::init();
@@ -68,7 +68,6 @@ async fn main() -> anyhow::Result<()> {
                 nft_events::start_tracking(
                     chain_name,
                     rpc,
-                    data_dir,
                     start_from,
                     step,
                     &mut erc721_cb,
@@ -85,7 +84,6 @@ async fn main() -> anyhow::Result<()> {
                 nft_events::start_tracking(
                     chain_name,
                     rpc,
-                    data_dir,
                     start_from,
                     step,
                     &mut erc721_cb,

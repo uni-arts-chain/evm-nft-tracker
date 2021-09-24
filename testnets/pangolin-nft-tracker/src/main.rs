@@ -37,12 +37,10 @@ impl Erc1155EventCallback for PangolinErc1155EventCallback {
         &mut self,
         event: Erc1155Event,
         token_uri: String,
-    ) -> nft_events::Result<()> {
+    ) {
         println!("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
         println!("event: {:?}", event);
         println!("token_uri: {:?}", token_uri);
-
-        Ok(())
     }
 }
 
@@ -100,7 +98,6 @@ async fn main() -> anyhow::Result<()> {
             nft_events::start_tracking(
                 chain_name,
                 rpc,
-                data_dir,
                 start_from,
                 step,
                 &mut erc721_cb,
