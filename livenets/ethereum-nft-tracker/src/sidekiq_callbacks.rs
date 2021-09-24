@@ -10,19 +10,15 @@ impl Erc721EventCallback for EthereumErc721EventCallback {
         event: Erc721Event,
         name: String,
         symbol: String,
-        total_supply: Option<u128>,
         token_uri: String,
-    ) -> nft_events::Result<()> {
+    ) {
         sidekiq_helper::send_erc721(
             "Ethereum".to_string(),
             event,
             name,
             symbol,
             token_uri,
-            total_supply,
         );
-
-        Ok(())
     }
 }
 

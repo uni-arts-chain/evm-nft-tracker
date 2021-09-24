@@ -69,9 +69,8 @@ impl EvmClient {
         Ok(latest_block_number)
     }
 
-    /// Check if a contract address is a visual ERC721 contract
-    pub async fn is_visual_erc721(&self, contract_address: H160) -> Result<bool> {
-
+    /// Check if a contract address is an ERC721 contract
+    pub async fn is_erc721(&self, contract_address: H160) -> Result<bool> {
         let contract = Contract::from_json(
             self.web3.eth(),
             contract_address,
@@ -79,7 +78,9 @@ impl EvmClient {
         )?;
 
         let interface_id: [u8; 4] = hex2array::<_, 4>("0x80ac58cd").unwrap();
-        let is_erc721: web3::contract::Result<bool> = contract
+
+        Ok(
+            contract
             .query(
                 "supportsInterface",
                 (interface_id,),
@@ -87,185 +88,87 @@ impl EvmClient {
                 Options::default(),
                 None,
             )
-            .await;
-
-        match is_erc721 {
-            Ok(erc721) => {
-                if erc721 {
-                    let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
-                    let supports_metadata: web3::contract::Result<bool> = contract
-                        .query(
-                            "supportsInterface",
-                            (interface_id,),
-                            None,
-                            Options::default(),
-                            None,
-                        )
-                        .await;
-                    match supports_metadata {
-                        Ok(supports) => Ok(supports),
-                        Err(_) => Ok(false),
-                    }
-                } else {
-                    Ok(false)
-                }
-            },
-            Err(_) => Ok(false),
-        }
+            .await?
+        )
     }
 
-    /// Get the metadata of an ERC721 token
-    /// If the ERC721 contract not support metadata, this function will return Ok(None).
-    /// The returned tuple is (name, symbol, token_uri).
-    pub async fn get_erc721_metadata(
+    /// Check if a contract address supports ERC721 metadata
+    pub async fn supports_erc721_metadata(&self, contract_address: H160) -> Result<bool> {
+        let contract = Contract::from_json(
+            self.web3.eth(),
+            contract_address,
+            include_bytes!("./contracts/erc721.json"),
+        )?;
+
+        let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
+
+        Ok(
+            contract
+            .query(
+                "supportsInterface",
+                (interface_id,),
+                None,
+                Options::default(),
+                None,
+            )
+            .await?
+        )
+    }
+
+    /// Get the metadata name of an ERC721 contract
+    pub async fn get_erc721_name(
         &self,
         contract_address: &H160,
-        token_id: &U256,
-    ) -> Result<Option<(String, String, String)>> {
+    ) -> Result<String> {
         let contract = Contract::from_json(
             self.web3.eth(),
             contract_address.clone(),
             include_bytes!("./contracts/erc721.json"),
         )?;
-        let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
-        let supports_metadata: bool = contract
-            .query(
-                "supportsInterface",
-                (interface_id,),
-                None,
-                Options::default(),
-                None,
-            )
+        let name: String = contract
+            .query("name", (), None, Options::default(), None)
             .await?;
-        if supports_metadata {
-            let name: String = contract
-                .query("name", (), None, Options::default(), None)
-                .await?;
-            let symbol: String = contract
-                .query("symbol", (), None, Options::default(), None)
-                .await?;
-            let token_uri: String = contract
-                .query(
-                    "tokenURI",
-                    (token_id.clone(),),
-                    None,
-                    Options::default(),
-                    None,
-                )
-                .await?;
-            Ok(Some((name, symbol, token_uri)))
-        } else {
-            Ok(None)
-        }
+        Ok(name)
     }
 
-    /// Get the name and symbol of an ERC721 contract
-    pub async fn get_erc721_name_symbol(
+    /// Get the metadata symbol of an ERC721 contract
+    pub async fn get_erc721_symbol(
         &self,
         contract_address: &H160,
-    ) -> Result<Option<(String, String)>> {
+    ) -> Result<String> {
         let contract = Contract::from_json(
             self.web3.eth(),
             contract_address.clone(),
             include_bytes!("./contracts/erc721.json"),
         )?;
-        let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
-        let supports_metadata: bool = contract
-            .query(
-                "supportsInterface",
-                (interface_id,),
-                None,
-                Options::default(),
-                None,
-            )
+        let symbol: String = contract
+            .query("symbol", (), None, Options::default(), None)
             .await?;
-        if supports_metadata {
-            let name: String = contract
-                .query("name", (), None, Options::default(), None)
-                .await?;
-            let symbol: String = contract
-                .query("symbol", (), None, Options::default(), None)
-                .await?;
-            Ok(Some((name, symbol)))
-        } else {
-            Ok(None)
-        }
+        Ok(symbol)
     }
 
-    /// Get the token_uri of an ERC721 token
+    /// Get the metadata token_uri of an ERC721 token
     pub async fn get_erc721_token_uri(
         &self,
         contract_address: &H160,
         token_id: &U256,
-    ) -> Result<Option<String>> {
+    ) -> Result<String> {
         let contract = Contract::from_json(
             self.web3.eth(),
             contract_address.clone(),
             include_bytes!("./contracts/erc721.json"),
         )?;
 
-        let interface_id: [u8; 4] = hex2array::<_, 4>("0x5b5e139f").unwrap();
-        let supports_metadata: bool = contract
+        let token_uri: String = contract
             .query(
-                "supportsInterface",
-                (interface_id,),
+                "tokenURI",
+                (token_id.clone(),),
                 None,
                 Options::default(),
                 None,
             )
             .await?;
-        if supports_metadata {
-            let token_uri: String = contract
-                .query(
-                    "tokenURI",
-                    (token_id.clone(),),
-                    None,
-                    Options::default(),
-                    None,
-                )
-                .await?;
-            Ok(Some(token_uri))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Get the total_supply of an ERC721 contract 
-    pub async fn get_erc721_total_supply(&self, contract_address: &H160, block_number: Option<u64>) -> Result<Option<u128>> {
-        let contract = Contract::from_json(
-            self.web3.eth(),
-            contract_address.clone(),
-            include_bytes!("./contracts/erc721.json"),
-        )?;
-
-        let block_id = block_number.map(|n| {
-            BlockId::Number(BlockNumber::Number(U64::from(n)))
-        }); 
-
-        let interface_id: [u8; 4] = hex2array::<_, 4>("0x780e9d63").unwrap();
-        let supports_enumerable: bool = contract
-            .query(
-                "supportsInterface",
-                (interface_id,),
-                None,
-                Options::default(),
-                block_id,
-            )
-            .await?;
-        if supports_enumerable {
-            let total_supply: U256 = contract
-                .query(
-                    "totalSupply",
-                    (),
-                    None,
-                    Options::default(),
-                    block_id,
-                )
-                .await?;
-            Ok(Some(total_supply.as_u128()))
-        } else {
-            Ok(None)
-        }
+        Ok(token_uri)
     }
 
     /// Check if a contract address is a visual ERC1155 contract
@@ -393,15 +296,15 @@ mod tests {
 
         // A visual ERC721
         let address = H160::from_str("0xa56a4f2b9807311ac401c6afba695d3b0c31079d").unwrap();
-        assert_eq!(true, client.is_visual_erc721(address).await.unwrap());
+        assert_eq!(true, client.is_erc721(address).await.unwrap());
 
         // Not ERC721
         let address = H160::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
-        assert_eq!(false, client.is_visual_erc721(address).await.unwrap());
+        assert_eq!(false, client.is_erc721(address).await.unwrap());
 
         // Not contract address
         let address = H160::from_str("0x0000000000000000000000000000000000000000").unwrap();
-        assert_eq!(false, client.is_visual_erc721(address).await.unwrap());
+        assert_eq!(false, client.is_erc721(address).await.unwrap());
     }
 
     #[tokio::test]
@@ -410,7 +313,7 @@ mod tests {
         let client = EvmClient::new("Pangolin".to_owned(), web3);
         // A non-visual ERC721
         let address = H160::from_str("0x2b75d135E605D9aBABb9a6F7bFad31F7d003F44e").unwrap();
-        assert_eq!(false, client.is_visual_erc721(address).await.unwrap());
+        assert_eq!(false, client.is_erc721(address).await.unwrap());
     }
 
     #[tokio::test]

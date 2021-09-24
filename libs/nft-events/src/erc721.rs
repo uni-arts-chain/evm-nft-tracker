@@ -17,16 +17,14 @@ pub trait Erc721EventCallback: Send {
         event: Erc721Event,
         name: String,
         symbol: String,
-        total_supply: Option<u128>,
         token_uri: String,
-    ) -> Result<()>;
+    );
 }
 
 /// Entry function for tracking ERC721.
 /// If you only need to track ERC721, you can use this function directly.
 pub async fn track_erc721_events(
     evm_client: &EvmClient,
-    db_conn: &Connection,
     start_from: u64,
     step: u64,
     end_block: Option<u64>,
@@ -45,137 +43,60 @@ pub async fn track_erc721_events(
                 }
 
                 if to >= from {
-                    debug!(
-                        "Scan for {} ERC721 events in block range of {} - {}({})",
-                        evm_client.chain_name,
-                        from,
-                        to,
-                        to - from + 1
-                    );
-                    let start = Instant::now();
+                    debug!("Scan for ERC721 events in {} - {}({})", from, to, to - from + 1);
                     match erc721_evm::get_erc721_events(&evm_client, from, to).await {
                         Ok(events) => {
-                            info!(
-                                "{} {} ERC721 events were scanned in block range of {} - {}({})",
-                                events.len(),
-                                evm_client.chain_name,
-                                from,
-                                to,
-                                to - from + 1
-                            );
+
+                            info!("{} ERC721 events were scanned in {} - {}({})", events.len(), from, to, to - from + 1);
+
                             for event in events {
-                                // PROCESS AN EVENT
-                                if let Err(err) = process_event(evm_client, db_conn, event.clone(), callback).await {
-                                    error!("Encountered an error when process ERC721 event {:?} from {}: {:?}.", event, evm_client.chain_name, err);
-                                }
+                                process_event(evm_client, event.clone(), callback).await;
                             }
 
                             from = to + 1;
-                            let duration = start.elapsed();
-                            debug!("Time elapsed is: {:?}", duration);
-                            sleep(Duration::from_secs(5)).await;
+
                         }
-                        Err(err) => match err {
-                            Error::Web3Error(web3::Error::Rpc(e)) => {
-                                if e.message.contains("more than") {
-                                    error!("{}", e.message);
-                                    step = std::cmp::max(step / 2, 1);
-                                } else {
-                                    error!("Encountered an error when get ERC721 events from {}: {:?}, wait for 30 seconds.", evm_client.chain_name, e);
-                                    sleep(Duration::from_secs(30)).await;
-                                }
-                            }
-                            _ => {
-                                error!("Encountered an error when get ERC721 events from {}: {:?}, wait for 30 seconds.", evm_client.chain_name, err);
-                                sleep(Duration::from_secs(30)).await;
-                            }
+                        Err(err) => {
+                            error!("Encountered an error when get ERC721 events: {:?}, wait for 30 seconds.", err);
+                            sleep(Duration::from_secs(30)).await;
                         },
                     }
                 } else {
-                    debug!(
-                        "Track {} ERC721 events too fast, wait for 30 seconds.",
-                        evm_client.chain_name
-                    );
+                    debug!("Track ERC721 events too fast, wait for 30 seconds.");
                     sleep(Duration::from_secs(30)).await;
                 }
             }
             Err(err) => {
-                error!("Encountered an error when get latest_block_number from {}: {:?}, wait for 30 seconds.", evm_client.chain_name, err);
+                error!("Encountered an error when get latest_block_number: {:?}, wait for 30 seconds.", err);
                 sleep(Duration::from_secs(30)).await;
             }
         }
     }
 }
 
-async fn process_event(evm_client: &EvmClient, db_conn: &Connection, event: Erc721Event, callback: &mut dyn Erc721EventCallback) -> Result<()> {
-    let metadata = get_metadata(evm_client, db_conn, &event).await?;
-    if let Some((name, symbol, token_uri)) = metadata {
-        // get total supply
-        // let total_supply = evm_client.get_erc721_total_supply(&event.address, event.block_number).await?;
-        let total_supply = Some(0);
+async fn process_event(evm_client: &EvmClient, event: Erc721Event, callback: &mut dyn Erc721EventCallback) {
+    let (name, symbol, token_uri) = get_metadata(evm_client, &event).await;
 
-        // callback
-        callback.on_erc721_event(
-            event,
-            name,
-            symbol,
-            total_supply,
-            token_uri,
-        )
-        .await?;
-    }
-
-    Ok(())
+    // callback
+    callback.on_erc721_event(
+        event,
+        name,
+        symbol,
+        token_uri,
+    )
+    .await;
 }
 
 async fn get_metadata(
     evm_client: &EvmClient,
-    db_conn: &Connection,
     event: &Erc721Event,
-) -> Result<Option<(String, String, String)>> {
-    save_metadata_to_db_if_not_exists(evm_client, db_conn, &event.address, &event.token_id).await?;
-    let collection =
-        erc721_db::get_collection_from_db(db_conn, &format!("{:?}", event.address))?.unwrap();
-    let token =
-        erc721_db::get_token_from_db(db_conn, collection.0, &event.token_id.to_string())?.unwrap();
-
-    if collection.2.is_some() && collection.3.is_some() && token.3.is_some() {
-        Ok(Some((collection.2.unwrap(), collection.3.unwrap(), token.3.unwrap())))
-    } else {
-        Ok(None)
-    }
+) -> (String, String, String) {
+    let name = evm_client.get_erc721_name(&event.address).await.unwrap_or("Unknown".to_owned());
+    let symbol = evm_client.get_erc721_symbol(&event.address).await.unwrap_or("Unknown".to_owned());
+    let token_uri = evm_client.get_erc721_token_uri(&event.address, &event.token_id).await.unwrap_or("Unknown".to_owned());
+    (name, symbol, token_uri)
 }
 
-async fn save_metadata_to_db_if_not_exists(
-    evm_client: &EvmClient,
-    db_conn: &Connection,
-    address: &H160,
-    token_id: &U256,
-) -> Result<()> {
-    let address_string = format!("{:?}", address);
-    let collection_id =
-        if let Some(collection) = erc721_db::get_collection_from_db(db_conn, &address_string)? {
-            collection.0
-        } else {
-            if let Some((name, symbol)) = evm_client.get_erc721_name_symbol(address).await? {
-                erc721_db::add_collection_to_db(
-                    db_conn,
-                    address_string.clone(),
-                    Some(name),
-                    Some(symbol),
-                )?
-            } else {
-                erc721_db::add_collection_to_db(db_conn, address_string.clone(), None, None)?
-            }
-        };
-
-    let token = erc721_db::get_token_from_db(db_conn, collection_id, &token_id.to_string())?;
-    if token.is_none() {
-        let token_uri = evm_client.get_erc721_token_uri(address, token_id).await?;
-        erc721_db::add_token_to_db(db_conn, token_id.to_string(), collection_id, token_uri)?;
-    }
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {

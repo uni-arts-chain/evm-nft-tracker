@@ -18,18 +18,14 @@ impl Erc721EventCallback for PangolinErc721EventCallback {
         event: Erc721Event,
         name: String,
         symbol: String,
-        total_supply: Option<u128>,
         token_uri: String,
-    ) -> nft_events::Result<()> {
+    ) {
         println!("------------------------------------------------------------------------------------------");
         println!("event: {:?}", event);
         println!(
             "name: {:?}, symbol: {:?}, token_uri: {:?}",
             name, symbol, token_uri
         );
-        println!("total_supply: {:?}", total_supply);
-
-        Ok(())
     }
 }
 

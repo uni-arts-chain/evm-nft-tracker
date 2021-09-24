@@ -58,7 +58,7 @@ pub async fn start_tracking(
     let db_conn1 = Connection::open(database_path.clone())?;
     erc721_db::create_tables_if_not_exist(&db_conn1)?;
 
-    let t1 = erc721::track_erc721_events(&client, &db_conn1, start_from, step, None, erc721_cb);
+    let t1 = erc721::track_erc721_events(&client, start_from, step, None, erc721_cb);
 
     // ERC1155
     // ******************************************************************

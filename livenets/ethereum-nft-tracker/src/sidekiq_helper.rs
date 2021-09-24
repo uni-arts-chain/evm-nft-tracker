@@ -10,7 +10,6 @@ pub fn send_erc721(
     name: String,
     symbol: String,
     token_uri: String,
-    total_supply: Option<u128>,
 ) {
     if event.block_number.is_some() && event.transaction_hash.is_some() {
         let block_number = event.block_number.unwrap();
@@ -31,7 +30,6 @@ pub fn send_erc721(
             token_uri, 
             name, 
             symbol, 
-            total_supply
         );
 
         push(job);
@@ -49,15 +47,9 @@ fn build_erc721_job(
     token_uri: String,
     name: String,
     symbol: String,
-    total_supply: Option<u128>,
 ) -> Job {
     let class = "ProcessErc721EventWorker".to_string();
 
-    let ts = if let Some(total_supply) = total_supply {
-        Value::from(total_supply as u64)
-    } else {
-        Value::Null
-    };
     let value = serde_json::json!({
         "blockchain": blockchain,
         "block_number": block_number,
@@ -69,7 +61,6 @@ fn build_erc721_job(
         "token_uri": token_uri,
         "name": name,
         "symbol": symbol,
-        "total_supply": ts, 
     });
     let args: Vec<Value> = vec![value];
 
