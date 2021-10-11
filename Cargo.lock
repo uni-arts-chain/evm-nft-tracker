@@ -942,7 +942,6 @@ dependencies = [
  "async-trait",
  "env_logger",
  "log",
- "rusqlite",
  "thiserror",
  "tokio",
  "web3",

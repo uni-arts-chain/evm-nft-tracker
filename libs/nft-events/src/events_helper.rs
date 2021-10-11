@@ -1,9 +1,25 @@
-//! This module is a library to get ERC1155 transfer events.
-use crate::{EvmClient, Result};
+use crate::{EvmClient, Result, Error};
 use array_bytes::hex2bytes_unchecked as bytes;
 use web3::types::{Bytes, Log, H160, H256, U256};
 
 /// The Erc721 Transfer Event Wrapper
+#[derive(Debug, Clone)]
+pub struct Erc721Event {
+    /// The block to which this event belongs
+    pub block_number: Option<u64>,
+    /// The ERC721 contract address
+    pub address: H160,
+    /// The transaction that issued this event
+    pub transaction_hash: Option<H256>,
+    /// Transfer from
+    pub from: H160,
+    /// Transfer to
+    pub to: H160,
+    /// Transferred ERC721 token
+    pub token_id: U256,
+}
+
+/// The Erc1155 Transfer Event Wrapper
 #[derive(Debug, Clone)]
 pub struct Erc1155Event {
     /// The block to which this event belongs
@@ -24,44 +40,96 @@ pub struct Erc1155Event {
     pub amount: U256,
 }
 
-/// Get all erc1155 events between `from` and `to`.
+/// Event
+#[derive(Debug, Clone)]
+pub enum Event {
+    /// Erc721Event
+    Erc721(Erc721Event),
+    /// Erc1155Event
+    Erc1155(Erc1155Event)
+}
+
+/// Get all events between `from` and `to`.
 /// the `from` and `to` blocks are included.
-pub async fn get_erc1155_events(
-    client: &EvmClient,
-    from: u64,
-    to: u64,
-) -> Result<Vec<Erc1155Event>> {
-    let transfer_single_topic = H256::from_slice(&bytes(
+pub async fn get_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Event>> {
+    let erc721_transfer_topic = H256::from_slice(&bytes(
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+    ));
+    let erc1155_transfer_single_topic = H256::from_slice(&bytes(
         "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62",
     ));
-    let transfer_batch_topic = H256::from_slice(&bytes(
+    let erc1155_transfer_batch_topic = H256::from_slice(&bytes(
         "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb",
     ));
-    let topics = vec![transfer_single_topic, transfer_batch_topic];
+    let topics = vec![
+        erc721_transfer_topic, 
+        erc1155_transfer_single_topic, 
+        erc1155_transfer_batch_topic
+    ];
     let logs = client.get_logs(None, topics, from, to).await?;
 
     let mut result = vec![];
-
     for log in logs {
 
-        let is_erc1155 = client.is_erc1155(log.address).await?;
-        let supports_metadata = client.supports_erc1155_metadata(log.address).await?;
+        if let Err(err) = process_log(client, log, erc721_transfer_topic, erc1155_transfer_single_topic, &mut result).await {
 
-        if is_erc1155 && supports_metadata {
-            if log.topics[0] == transfer_single_topic {
-                let event = build_event(&log).await?;
-                result.push(event);
-            } else {
-                let mut events = build_events(&log).await?;
-                result.append(&mut events);
-            };
+            match err {
+                // Error::Web3ContractError(web3::contract::Error::Api(web3::error::Error::Rpc(e))) => {
+                //     error!("{:?}", e);
+                // },
+                _ => {
+                    return Err(err)
+                },
+            }
+
         }
+
     }
 
     Ok(result)
 }
 
-async fn build_event(log: &Log) -> Result<Erc1155Event> {
+async fn process_log(client: &EvmClient, log: Log, erc721_transfer_topic: H256, erc1155_transfer_single_topic: H256, result: &mut Vec<Event>) -> Result<()> {
+    Ok(if log.topics[0] == erc721_transfer_topic {
+
+        // ERC721
+        if log.topics.len() == 4 && client.is_erc721(log.address).await? && client.supports_erc721_metadata(log.address).await? {
+            result.push(build_erc721_event(&log));
+        }
+
+    } else {
+
+        // ERC1155
+        if client.is_erc1155(log.address).await? && client.supports_erc1155_metadata(log.address).await? {
+            if log.topics[0] == erc1155_transfer_single_topic {
+                let event = build_erc1155_event(&log);
+                result.push(event);
+            } else {
+                let mut events = build_erc1155_events(&log);
+                result.append(&mut events);
+            };
+        }
+
+    })
+}
+
+fn build_erc721_event(log: &Log) -> Event {
+    let from = H160::from(log.topics[1]);
+    let to = H160::from(log.topics[2]);
+    let token_id = U256::from(log.topics[3].0);
+    Event::Erc721(
+        Erc721Event {
+            block_number: log.block_number.map(|b| b.as_u64()),
+            address: log.address,
+            transaction_hash: log.transaction_hash,
+            from,
+            to,
+            token_id,
+        }
+    )
+}
+
+fn build_erc1155_event(log: &Log) -> Event {
     let token_id = U256::from_big_endian(&log.data.0[0..32]);
     let amount = U256::from_big_endian(&log.data.0[32..64]);
     let block_number = log.block_number.map(|b| b.as_u64());
@@ -71,7 +139,7 @@ async fn build_event(log: &Log) -> Result<Erc1155Event> {
     let from = H160::from(log.topics[2]);
     let to = H160::from(log.topics[3]);
 
-    Ok(
+    Event::Erc1155(
         Erc1155Event {
             block_number,
             address,
@@ -85,7 +153,7 @@ async fn build_event(log: &Log) -> Result<Erc1155Event> {
     )
 }
 
-async fn build_events(log: &Log) -> Result<Vec<Erc1155Event>> {
+fn build_erc1155_events(log: &Log) -> Vec<Event> {
     let block_number = log.block_number.map(|b| b.as_u64());
     let address = log.address;
     let transaction_hash = log.transaction_hash;
@@ -119,19 +187,22 @@ async fn build_events(log: &Log) -> Result<Vec<Erc1155Event>> {
     for i in 0..token_ids.len() {
         let token_id = token_ids[i];
         let amount = amounts[i];
-        events.push(Erc1155Event {
-            block_number,
-            address,
-            transaction_hash,
-            operator,
-            from,
-            to,
-            token_id, 
-            amount,
-        });
+        let event = Event::Erc1155(
+            Erc1155Event {
+                block_number,
+                address,
+                transaction_hash,
+                operator,
+                from,
+                to,
+                token_id, 
+                amount,
+            }
+        );
+        events.push(event);
     }
 
-    Ok(events)
+    events
 }
 
 fn get_ids_and_amounts(data: &Bytes) -> (Vec<U256>, Vec<U256>) {
@@ -153,22 +224,5 @@ fn get_ids_and_amounts(data: &Bytes) -> (Vec<U256>, Vec<U256>) {
         (ids, amounts)
     } else {
         (vec![], vec![])
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use web3::{transports::http::Http, Web3};
-
-    #[tokio::test]
-    async fn test_get_erc1155_events() {
-        let web3 = Web3::new(Http::new("https://main-light.eth.linkpool.io").unwrap());
-        let client = EvmClient::new("Ethereum".to_owned(), web3);
-
-        let events = get_erc1155_events(&client, 13015344, 13015344)
-            .await
-            .unwrap();
-        assert_eq!(4, events.len());
     }
 }

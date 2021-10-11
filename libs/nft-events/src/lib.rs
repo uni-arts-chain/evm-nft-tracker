@@ -1,3 +1,4 @@
+#![feature(backtrace)]
 #![warn(missing_docs)]
 //! This library was used to discover EVM-based NFTs, including ERC-721 and ERC-1155 NFTs.
 //! It discovers NFTs by listening to the transfer events of ERC-721 and ERC-1155 contracts.
@@ -5,13 +6,16 @@
 mod error;
 mod evm_client;
 
-// erc721
-pub mod erc721;
-pub mod erc721_evm;
+/// helper to get evm nft events
+pub mod events_helper;
+pub use events_helper::Event;
+pub use events_helper::Erc721Event;
+pub use events_helper::Erc1155Event;
 
-// erc1155
-pub mod erc1155;
-pub mod erc1155_evm;
+/// the events tracker
+pub mod tracker;
+pub use tracker::Erc721EventCallback;
+pub use tracker::Erc1155EventCallback;
 
 pub use error::Error;
 /// The lib's result
@@ -19,11 +23,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub use evm_client::EvmClient;
 
-pub use erc721::Erc721EventCallback;
-pub use erc721_evm::Erc721Event;
-
-pub use erc1155::Erc1155EventCallback;
-pub use erc1155_evm::Erc1155Event;
 
 #[macro_use]
 extern crate log;
@@ -46,15 +45,9 @@ pub async fn start_tracking(
     let web3 = Web3::new(Http::new(rpc)?);
     let client = EvmClient::new(chain_name.to_owned(), web3);
 
-    // ERC721
-    // ******************************************************************
-    let t1 = erc721::track_erc721_events(&client, start_from, step, None, erc721_cb);
-
-    // ERC1155
-    // ******************************************************************
-    let t2 = erc1155::track_erc1155_events(&client, start_from, step, None, erc1155_cb);
-
-    tokio::join!(t1, t2);
+    tracker::track_events(&client, start_from, step, None, erc721_cb, erc1155_cb).await;
 
     Ok(())
 }
+
+
