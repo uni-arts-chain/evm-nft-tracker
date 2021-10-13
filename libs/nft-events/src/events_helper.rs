@@ -1,5 +1,6 @@
 use crate::{EvmClient, Result, Error};
 use array_bytes::hex2bytes_unchecked as bytes;
+use jsonrpc_core::error;
 use web3::types::{Bytes, Log, H160, H256, U256};
 
 /// The Erc721 Transfer Event Wrapper
@@ -71,15 +72,10 @@ pub async fn get_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Ev
     let mut result = vec![];
     for log in logs {
 
-        if let Err(err) = process_log(client, log, erc721_transfer_topic, erc1155_transfer_single_topic, &mut result).await {
+        if let Err(err) = process_log(client, &log, erc721_transfer_topic, erc1155_transfer_single_topic, &mut result).await {
 
-            match err {
-                // Error::Web3ContractError(web3::contract::Error::Api(web3::error::Error::Rpc(e))) => {
-                //     error!("{:?}", e);
-                // },
-                _ => {
-                    return Err(err)
-                },
+            if let Some(e) = process_err(&log, err) {
+                return Err(e);
             }
 
         }
@@ -89,18 +85,47 @@ pub async fn get_events(client: &EvmClient, from: u64, to: u64) -> Result<Vec<Ev
     Ok(result)
 }
 
-async fn process_log(client: &EvmClient, log: Log, erc721_transfer_topic: H256, erc1155_transfer_single_topic: H256, result: &mut Vec<Event>) -> Result<()> {
+fn process_err(log: &Log, err: Error) -> Option<Error> {
+    match err {
+        Error::Web3ContractError(ref e1) => {
+            match e1 {
+
+                web3::contract::Error::Abi(web3::ethabi::Error::InvalidName(msg)) => {
+                    error!("{:?} >>> {}", log, msg);
+                    None
+                },
+
+                web3::contract::Error::Api(web3::Error::Rpc(jsonrpc_core::types::Error { code, message, data } )) => {
+                    if message == "execution reverted" {
+                        error!("{:?} >>> {:?}", log, err);
+                        None
+                    } else {
+                        Some(err)
+                    }
+                },
+
+                _ => Some(err),
+            }
+        },
+        _ => Some(err),
+    }
+}
+
+async fn process_log(client: &EvmClient, log: &Log, erc721_transfer_topic: H256, erc1155_transfer_single_topic: H256, result: &mut Vec<Event>) -> Result<()> {
     Ok(if log.topics[0] == erc721_transfer_topic {
 
         // ERC721
-        if log.topics.len() == 4 && client.is_erc721(log.address).await? && client.supports_erc721_metadata(log.address).await? {
+        if log.topics.len() == 4 &&
+            client.is_erc721(log.address).await? &&
+                client.supports_erc721_metadata(log.address).await? {
             result.push(build_erc721_event(&log));
         }
 
     } else {
 
         // ERC1155
-        if client.is_erc1155(log.address).await? && client.supports_erc1155_metadata(log.address).await? {
+        if client.is_erc1155(log.address).await? && 
+            client.supports_erc1155_metadata(log.address).await? {
             if log.topics[0] == erc1155_transfer_single_topic {
                 let event = build_erc1155_event(&log);
                 result.push(event);

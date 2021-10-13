@@ -941,6 +941,7 @@ dependencies = [
  "array-bytes",
  "async-trait",
  "env_logger",
+ "jsonrpc-core",
  "log",
  "thiserror",
  "tokio",

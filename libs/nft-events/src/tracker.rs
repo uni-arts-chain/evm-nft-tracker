@@ -42,6 +42,7 @@ pub async fn track_events(
 ) {
     let mut from = start_from;
     loop {
+                // let latest_block_number = evm_client.get_latest_block_number().await.unwrap();
         match evm_client.get_latest_block_number().await {
             Ok(latest_block_number) => {
                 let to = std::cmp::min(from + step - 1, latest_block_number - 6);
@@ -54,6 +55,8 @@ pub async fn track_events(
                 if to >= from {
                     info!("Scan in {} - {}({})", from, to, to - from + 1);
 
+                            // let events = events_helper::get_events(&evm_client, from,
+                            // to).await.unwrap();
                     match events_helper::get_events(&evm_client, from, to).await {
                         Ok(events) => {
 
