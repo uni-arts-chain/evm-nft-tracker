@@ -99,39 +99,47 @@ async fn process_err(err: MyError) {
 }
 
 async fn process_erc721_event(evm_client: &EvmClient, event: Erc721Event, callback: &mut dyn Erc721EventCallback) {
-    let (name, symbol, token_uri) = get_erc721_metadata(evm_client, &event).await;
-
-    // callback
-    callback.on_erc721_event(
-        event,
-        name,
-        symbol,
-        token_uri,
-    )
-    .await;
+    if let Some((name, symbol, token_uri)) = get_erc721_metadata(evm_client, &event).await {
+        // callback
+        callback.on_erc721_event(
+            event,
+            name,
+            symbol,
+            token_uri,
+        )
+        .await;
+    }
 }
 
 async fn get_erc721_metadata(
     evm_client: &EvmClient,
     event: &Erc721Event,
-) -> (String, String, String) {
-    let name = evm_client.get_erc721_name(&event.address).await.unwrap_or("Unknown".to_owned());
-    let symbol = evm_client.get_erc721_symbol(&event.address).await.unwrap_or("Unknown".to_owned());
-    let token_uri = evm_client.get_erc721_token_uri(&event.address, &event.token_id).await.unwrap_or("Unknown".to_owned());
-    (name, symbol, token_uri)
+) -> Option<(String, String, String)> {
+    if let Ok(name) = evm_client.get_erc721_name(&event.address).await {
+        if let Ok(symbol) = evm_client.get_erc721_symbol(&event.address).await {
+            if let Ok(token_uri) = evm_client.get_erc721_token_uri(&event.address, &event.token_id).await {
+                return Some((name, symbol, token_uri));
+            }
+        }
+    }
+
+    return None;
 }
 
 async fn process_erc1155_event(evm_client: &EvmClient, event: Erc1155Event, callback: &mut dyn Erc1155EventCallback) {
-    let token_uri = get_erc1155_metadata(evm_client, &event).await;
-
-    // callback
-    callback.on_erc1155_event(event, token_uri).await
+    if let Some(token_uri) = get_erc1155_metadata(evm_client, &event).await {
+        // callback
+        callback.on_erc1155_event(event, token_uri).await
+    }
 }
 
 async fn get_erc1155_metadata(
     evm_client: &EvmClient,
     event: &Erc1155Event,
-) -> String {
-    let token_uri = evm_client.get_erc1155_token_uri(&event.address, &event.token_id).await.unwrap_or("Unknown".to_owned());
-    token_uri
+) -> Option<String> {
+    if let Ok(token_uri) = evm_client.get_erc1155_token_uri(&event.address, &event.token_id).await {
+        return Some(token_uri);
+    }
+
+    return None;
 }
