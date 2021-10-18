@@ -115,12 +115,10 @@ async fn get_erc721_metadata(
     evm_client: &EvmClient,
     event: &Erc721Event,
 ) -> Option<(String, String, String)> {
-    if let Ok(name) = evm_client.get_erc721_name(&event.address).await {
-        if let Ok(symbol) = evm_client.get_erc721_symbol(&event.address).await {
-            if let Ok(token_uri) = evm_client.get_erc721_token_uri(&event.address, &event.token_id).await {
-                return Some((name, symbol, token_uri));
-            }
-        }
+    if let Ok(token_uri) = evm_client.get_erc721_token_uri(&event.address, &event.token_id).await {
+        let name = evm_client.get_erc721_name(&event.address).await.unwrap_or("Unknown".to_owned());
+        let symbol = evm_client.get_erc721_symbol(&event.address).await.unwrap_or("Unknown".to_owned());
+        return Some((name, symbol, token_uri));
     }
 
     return None;
