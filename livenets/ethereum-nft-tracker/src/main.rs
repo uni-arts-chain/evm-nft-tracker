@@ -24,7 +24,7 @@ struct EthereumNftTrackerConfig {
 impl Default for EthereumNftTrackerConfig {
     fn default() -> Self {
         EthereumNftTrackerConfig {
-            rpc: "https://main-light.eth.linkpool.io".to_owned(),
+            rpc: "https://mainnet.infura.io/v3/0adf31ecccdb44cf9bbf1879cadcc382".to_owned(),
             step: 6,
         }
     }
