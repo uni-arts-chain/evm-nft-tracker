@@ -13,7 +13,7 @@ impl Erc721EventCallback for EthereumErc721EventCallback {
         token_uri: String,
     ) {
         sidekiq_helper::send_erc721(
-            "Ethereum".to_string(),
+            "Crab".to_string(),
             event,
             name,
             symbol,
@@ -32,7 +32,7 @@ impl Erc1155EventCallback for EthereumErc1155EventCallback {
         token_uri: String,
     ) {
         sidekiq_helper::send_erc1155(
-            "Ethereum".to_string(),
+            "Crab".to_string(),
             event,
             token_uri,
         );
