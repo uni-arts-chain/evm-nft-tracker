@@ -209,6 +209,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "crab-nft-tracker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "array-bytes",
+ "async-trait",
+ "confy",
+ "directories-next",
+ "env_logger",
+ "log",
+ "nft-events",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sidekiq",
+ "thiserror",
+ "tokio",
+ "web3",
+]
+
+[[package]]
 name = "crunchy"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
