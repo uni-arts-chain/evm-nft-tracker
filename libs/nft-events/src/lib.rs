@@ -1,4 +1,4 @@
-#![feature(backtrace)]
+// #![feature(backtrace)]
 #![warn(missing_docs)]
 //! This library was used to discover EVM-based NFTs, including ERC-721 and ERC-1155 NFTs.
 //! It discovers NFTs by listening to the transfer events of ERC-721 and ERC-1155 contracts.
